@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum MembershipStatus {
+  free
+  pending_verification
+  active
+  expired
+}
+
+enum SourceType {
+  self_hosted
+  embed
+}
+
+enum PaymentStatus {
+  pending_verification
+  verified
+  rejected
+}
+
+model User {
+  id                     String           @id @default(uuid()) @db.Uuid
+  name                   String
+  email                  String           @unique
+  phone                  String?          @unique
+  password_hash          String
+  role                   Role             @default(user)
+  membership_status      MembershipStatus @default(free)
+  membership_expiry_date DateTime?        @db.Timestamptz
+  created_at             DateTime         @default(now()) @db.Timestamptz
+
+  titles_created Title[]   @relation("TitleCreatedBy")
+  videos_uploaded Video[]  @relation("VideoUploadedBy")
+  payments       Payment[] @relation("UserPayments")
+  reviewed_payments Payment[] @relation("PaymentReviewedBy")
+
+  @@map("users")
+}
+
+model Title {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String
+  description      String?
+  cover_image_path String?
+  position         Int
+  created_by       String   @db.Uuid
+  created_at       DateTime @default(now()) @db.Timestamptz
+
+  creator User    @relation("TitleCreatedBy", fields: [created_by], references: [id])
+  videos  Video[]
+
+  @@map("titles")
+}
+
+model Video {
+  id             String     @id @default(uuid()) @db.Uuid
+  title_id       String     @db.Uuid
+  title          String
+  description    String?
+  source_type    SourceType
+  file_path      String?
+  embed_url      String?
+  thumbnail_path String?
+  is_free        Boolean    @default(false)
+  position       Int
+  uploaded_by    String     @db.Uuid
+  created_at     DateTime   @default(now()) @db.Timestamptz
+  updated_at     DateTime   @updatedAt @db.Timestamptz
+
+  title_ref Title @relation(fields: [title_id], references: [id], onDelete: Cascade)
+  uploader  User  @relation("VideoUploadedBy", fields: [uploaded_by], references: [id])
+
+  @@map("videos")
+}
+
+model MembershipPlan {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String
+  price         Decimal   @db.Decimal(10, 2)
+  duration_days Int
+  is_active     Boolean   @default(true)
+  payments      Payment[]
+
+  @@map("membership_plans")
+}
+
+model Payment {
+  id                 String        @id @default(uuid()) @db.Uuid
+  user_id            String        @db.Uuid
+  plan_id            String        @db.Uuid
+  reference_number   String        @unique
+  amount_claimed     Decimal       @db.Decimal(10, 2)
+  receipt_image_path String?
+  status             PaymentStatus @default(pending_verification)
+  rejection_reason   String?
+  reviewed_by        String?       @db.Uuid
+  reviewed_at        DateTime?     @db.Timestamptz
+  created_at         DateTime      @default(now()) @db.Timestamptz
+
+  user     User           @relation("UserPayments", fields: [user_id], references: [id], onDelete: Cascade)
+  plan     MembershipPlan @relation(fields: [plan_id], references: [id])
+  reviewer User?          @relation("PaymentReviewedBy", fields: [reviewed_by], references: [id])
+
+  @@map("payments")
+}
