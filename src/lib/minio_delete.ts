@@ -1,5 +1,5 @@
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { s3Client, BUCKET_NAME } from '@/lib/minio_client';
+import { s3Client, BUCKET_NAME } from '@/lib/minio';
 
 export async function deleteMinIOObject(objectPath: string): Promise<void> {
   try {
