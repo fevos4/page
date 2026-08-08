@@ -100,29 +100,54 @@ async function main() {
     ],
   });
 
-  // Create Sample Videos for Title 2
+  // Create Sample Title 3 (Shorts Row - Vertical 9:16)
+  const title3 = await prisma.title.create({
+    data: {
+      name: 'Shorts & Quick Takes',
+      description: 'Quick vertical clips, highlights, and viral shorts.',
+      cover_image_path: 'covers/shorts.jpg',
+      position: 3,
+      created_by: admin.id,
+    },
+  });
+
+  // Create Sample Videos for Title 3 (Portrait Format)
   await prisma.video.createMany({
     data: [
       {
-        title_id: title2.id,
-        title: 'Culture Talk #1: Public Q&A',
-        description: 'Free public edition answering audience questions.',
+        title_id: title3.id,
+        title: 'Quick Take #1: Truth in 60 Seconds',
+        description: 'Free vertical short clip.',
         source_type: SourceType.embed,
+        format: 'portrait',
         embed_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-        thumbnail_path: 'thumbnails/culture1.jpg',
+        thumbnail_path: 'thumbnails/short1.jpg',
         is_free: true,
         position: 1,
         uploaded_by: admin.id,
       },
       {
-        title_id: title2.id,
-        title: 'Exclusive Studio Tour',
-        description: 'Members-only behind-the-scenes walkthrough.',
+        title_id: title3.id,
+        title: 'Members Short #2: Unfiltered Reaction',
+        description: 'Members-only vertical quick take.',
         source_type: SourceType.self_hosted,
-        file_path: 'videos/studio-tour.mp4',
-        thumbnail_path: 'thumbnails/culture2.jpg',
+        format: 'portrait',
+        file_path: 'videos/short2.mp4',
+        thumbnail_path: 'thumbnails/short2.jpg',
         is_free: false,
         position: 2,
+        uploaded_by: admin.id,
+      },
+      {
+        title_id: title3.id,
+        title: 'Members Short #3: Raw Behind-The-Scenes',
+        description: 'Members-only portrait clip.',
+        source_type: SourceType.self_hosted,
+        format: 'portrait',
+        file_path: 'videos/short3.mp4',
+        thumbnail_path: 'thumbnails/short3.jpg',
+        is_free: false,
+        position: 3,
         uploaded_by: admin.id,
       },
     ],

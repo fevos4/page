@@ -24,6 +24,11 @@ enum SourceType {
   embed
 }
 
+enum VideoFormat {
+  landscape
+  portrait
+}
+
 enum PaymentStatus {
   pending_verification
   verified
@@ -39,6 +44,8 @@ model User {
   role                   Role             @default(user)
   membership_status      MembershipStatus @default(free)
   membership_expiry_date DateTime?        @db.Timestamptz
+  membership_cancelled_at DateTime?       @db.Timestamptz
+  renewal_reminder_sent  Boolean          @default(false)
   created_at             DateTime         @default(now()) @db.Timestamptz
 
   titles_created Title[]   @relation("TitleCreatedBy")
@@ -70,6 +77,7 @@ model Video {
   title          String
   description    String?
   source_type    SourceType
+  format         VideoFormat @default(landscape)
   file_path      String?
   embed_url      String?
   thumbnail_path String?

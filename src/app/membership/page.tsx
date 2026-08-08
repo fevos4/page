@@ -38,7 +38,12 @@ export default function MembershipPage() {
       .then((data) => {
         if (data.user) {
           setUserStatus(data.user.membershipStatus);
+        } else {
+          window.location.href = '/login?callbackUrl=/membership';
         }
+      })
+      .catch(() => {
+        window.location.href = '/login?callbackUrl=/membership';
       });
   }, []);
 

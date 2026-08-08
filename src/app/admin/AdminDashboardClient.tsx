@@ -8,6 +8,7 @@ interface Title {
   id: string;
   name: string;
   description?: string;
+  cover_image_path?: string;
   position: number;
   videos: Video[];
 }
@@ -17,6 +18,7 @@ interface Video {
   title: string;
   description?: string;
   source_type: 'self_hosted' | 'embed';
+  format: 'landscape' | 'portrait';
   embed_url?: string;
   file_path?: string;
   is_free: boolean;
@@ -52,12 +54,15 @@ export default function AdminDashboardClient() {
   // New Title Form
   const [newTitleName, setNewTitleName] = useState('');
   const [newTitleDesc, setNewTitleDesc] = useState('');
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // New Video Form
   const [selectedTitleId, setSelectedTitleId] = useState<string>('');
   const [videoTitle, setVideoTitle] = useState('');
   const [videoDesc, setVideoDesc] = useState('');
   const [sourceType, setSourceType] = useState<'self_hosted' | 'embed'>('embed');
+  const [videoFormat, setVideoFormat] = useState<'landscape' | 'portrait'>('landscape');
   const [embedUrl, setEmbedUrl] = useState('');
   const [isFree, setIsFree] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -93,14 +98,54 @@ export default function AdminDashboardClient() {
     e.preventDefault();
     if (!newTitleName) return;
 
+    let coverImagePath: string | null = null;
+
+    if (coverFile) {
+      setUploadingCover(true);
+      try {
+        const urlRes = await fetch('/api/admin/videos/upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: coverFile.name,
+            contentType: coverFile.type || 'image/jpeg',
+          }),
+        });
+
+        const { uploadUrl, objectPath } = await urlRes.json();
+
+        const putRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': coverFile.type || 'image/jpeg' },
+          body: coverFile,
+        });
+
+        if (!putRes.ok) {
+          throw new Error('Direct-to-MinIO cover image upload failed');
+        }
+
+        coverImagePath = objectPath;
+      } catch (err: any) {
+        alert(err.message);
+        setUploadingCover(false);
+        return;
+      }
+    }
+
     await fetch('/api/admin/titles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newTitleName, description: newTitleDesc }),
+      body: JSON.stringify({
+        name: newTitleName,
+        description: newTitleDesc,
+        cover_image_path: coverImagePath,
+      }),
     });
 
+    setUploadingCover(false);
     setNewTitleName('');
     setNewTitleDesc('');
+    setCoverFile(null);
     fetchData();
   };
 
@@ -155,6 +200,7 @@ export default function AdminDashboardClient() {
         title: videoTitle,
         description: videoDesc,
         source_type: sourceType,
+        format: videoFormat,
         embed_url: sourceType === 'embed' ? embedUrl : null,
         file_path: filePath,
         is_free: sourceType === 'embed' ? true : isFree,
@@ -165,6 +211,7 @@ export default function AdminDashboardClient() {
     setVideoTitle('');
     setVideoDesc('');
     setEmbedUrl('');
+    setVideoFormat('landscape');
     setSelectedFile(null);
     fetchData();
   };
@@ -192,6 +239,11 @@ export default function AdminDashboardClient() {
     fetchData();
   };
 
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login';
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-6 space-y-6 transition-colors duration-200">
       {/* Header */}
@@ -210,6 +262,12 @@ export default function AdminDashboardClient() {
           >
             ← Back to Library
           </Link>
+          <button
+            onClick={handleLogout}
+            className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-500/30 px-3 py-1.5 rounded font-semibold transition"
+          >
+            Log Out
+          </button>
         </div>
       </header>
 
@@ -342,11 +400,23 @@ export default function AdminDashboardClient() {
                   onChange={(e) => setNewTitleDesc(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500"
                 />
+
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-1">Cover Image (Optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
+                    className="w-full text-xs text-slate-600 dark:text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-none file:border-0 file:text-xs file:bg-slate-200 dark:file:bg-slate-800 file:text-slate-800 dark:file:text-amber-400"
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  className="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold py-2 rounded-none uppercase tracking-wider transition"
+                  disabled={uploadingCover}
+                  className="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold py-2 rounded-none uppercase tracking-wider transition disabled:opacity-50"
                 >
-                  Create Title
+                  {uploadingCover ? 'Uploading Cover...' : 'Create Title'}
                 </button>
               </form>
             </div>
@@ -383,6 +453,49 @@ export default function AdminDashboardClient() {
                   <option value="embed">Embed (Public / YouTube)</option>
                   <option value="self_hosted">Self Hosted (MinIO Storage)</option>
                 </select>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Video Format
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <label
+                      className={`flex items-center justify-center space-x-2 p-2 rounded cursor-pointer border transition ${
+                        videoFormat === 'landscape'
+                          ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold'
+                          : 'border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="videoFormat"
+                        value="landscape"
+                        checked={videoFormat === 'landscape'}
+                        onChange={() => setVideoFormat('landscape')}
+                        className="hidden"
+                      />
+                      <span>Landscape (16:9)</span>
+                    </label>
+
+                    <label
+                      className={`flex items-center justify-center space-x-2 p-2 rounded cursor-pointer border transition ${
+                        videoFormat === 'portrait'
+                          ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold'
+                          : 'border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="videoFormat"
+                        value="portrait"
+                        checked={videoFormat === 'portrait'}
+                        onChange={() => setVideoFormat('portrait')}
+                        className="hidden"
+                      />
+                      <span>Portrait (9:16 - Shorts)</span>
+                    </label>
+                  </div>
+                </div>
 
                 {sourceType === 'embed' ? (
                   <input

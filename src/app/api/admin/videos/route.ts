@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
     title,
     description,
     source_type,
+    format,
     file_path,
     embed_url,
     thumbnail_path,
@@ -27,6 +28,8 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  const videoFormat = format === 'portrait' ? 'portrait' : 'landscape';
 
   // Embed video rule check: If source_type is 'embed', is_free MUST be true
   const freeFlag = source_type === 'embed' ? true : Boolean(is_free);
@@ -53,6 +56,7 @@ export async function POST(req: NextRequest) {
       title,
       description: description || null,
       source_type,
+      format: videoFormat,
       file_path: file_path || null,
       embed_url: embed_url || null,
       thumbnail_path: thumbnail_path || null,

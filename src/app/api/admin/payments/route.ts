@@ -78,6 +78,8 @@ export async function POST(req: NextRequest) {
       data: {
         membership_status: 'active',
         membership_expiry_date: newExpiryDate,
+        membership_cancelled_at: null,
+        renewal_reminder_sent: false,
       },
     });
 

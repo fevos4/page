@@ -18,6 +18,7 @@ export default async function HomePage() {
     id: t.id,
     name: t.name,
     description: t.description,
+    cover_image_path: t.cover_image_path,
     position: t.position,
     created_at: t.created_at.toISOString(),
     videos: t.videos.map((v) => ({
@@ -25,6 +26,7 @@ export default async function HomePage() {
       title: v.title,
       description: v.description,
       source_type: v.source_type as 'self_hosted' | 'embed',
+      format: v.format as 'landscape' | 'portrait',
       embed_url: v.embed_url,
       thumbnail_path: v.thumbnail_path,
       is_free: v.is_free,
@@ -32,10 +34,10 @@ export default async function HomePage() {
     })),
   }));
 
-  // Fetch most recently created Title name for the hero tag line
+  // Fetch most recently created Title name and cover image for the hero section
   const latestTitleObj = await prisma.title.findFirst({
     orderBy: { created_at: 'desc' },
-    select: { name: true, id: true },
+    select: { name: true, cover_image_path: true, id: true },
   });
 
   // Fetch most recently added FREE video for the "Watch Free Preview" CTA
@@ -71,6 +73,7 @@ export default async function HomePage() {
       titles={titles}
       user={user}
       latestTitleName={latestTitleObj?.name || null}
+      latestTitleCover={latestTitleObj?.cover_image_path || null}
       latestFreeVideo={latestFreeVideo}
     />
   );
