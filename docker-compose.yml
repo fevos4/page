@@ -27,12 +27,19 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   createbuckets:
     image: minio/mc:latest
     container_name: zahra_minio_create_buckets
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     entrypoint: >
       /bin/sh -c "
       until (/usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin) do echo 'Waiting for MinIO...'; sleep 1; done;

@@ -3,6 +3,9 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { generatePresignedGetUrl } from '@/lib/minio';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { videoId: string } }
@@ -21,33 +24,19 @@ export async function GET(
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
 
-    // Embed videos rule check
-    if (video.source_type === 'embed') {
-      if (!video.is_free) {
-        return NextResponse.json({ error: 'Embed videos must be free' }, { status: 400 });
-      }
-      return NextResponse.json({
-        playable: true,
-        source_type: 'embed',
-        embed_url: video.embed_url,
-      });
-    }
-
-    // Self-hosted video playability check: is_free = true OR active membership
+    // Playability check: is_free = true OR active membership in DB
     let isPlayable = video.is_free;
 
     if (!isPlayable) {
       const session = await getSession();
-      if (session) {
-        // Fetch fresh user membership status from DB
-        const user = await prisma.user.findUnique({
+      if (session && session.userId) {
+        const dbUser = await prisma.user.findUnique({
           where: { id: session.userId },
           select: { membership_status: true, membership_expiry_date: true },
         });
 
-        if (user && user.membership_status === 'active') {
-          // Check expiry date if present
-          if (!user.membership_expiry_date || new Date(user.membership_expiry_date) > new Date()) {
+        if (dbUser && dbUser.membership_status === 'active') {
+          if (!dbUser.membership_expiry_date || new Date(dbUser.membership_expiry_date) > new Date()) {
             isPlayable = true;
           }
         }
@@ -60,7 +49,27 @@ export async function GET(
           playable: false,
           error: 'Members-only content. Active membership required.',
         },
-        { status: 403 }
+        {
+          status: 403,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        }
+      );
+    }
+
+    if (video.source_type === 'embed') {
+      return NextResponse.json(
+        {
+          playable: true,
+          source_type: 'embed',
+          embed_url: video.embed_url,
+        },
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        }
       );
     }
 
@@ -68,14 +77,20 @@ export async function GET(
       return NextResponse.json({ error: 'Video file path missing' }, { status: 404 });
     }
 
-    // Server-side presigned URL generation (valid 15 minutes)
     const playUrl = await generatePresignedGetUrl(video.file_path, 900);
 
-    return NextResponse.json({
-      playable: true,
-      source_type: 'self_hosted',
-      play_url: playUrl,
-    });
+    return NextResponse.json(
+      {
+        playable: true,
+        source_type: 'self_hosted',
+        play_url: playUrl,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('Error generating play URL:', error);
     return NextResponse.json({ error: 'Failed to access video' }, { status: 500 });

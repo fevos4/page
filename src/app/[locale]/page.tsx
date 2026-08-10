@@ -1,9 +1,17 @@
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import HomepageClient from './HomepageClient';
+import HomepageClient from '@/app/HomepageClient';
+import { setRequestLocale } from 'next-intl/server';
 
-export default async function HomePage() {
-  const session = await getSession();
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export default async function HomePage({
+  params: { locale },
+}: {
+  params: { locale: string };
+}) {
+  setRequestLocale(locale);
 
   const rawTitles = await prisma.title.findMany({
     orderBy: { position: 'asc' },
@@ -59,14 +67,31 @@ export default async function HomePage() {
       }
     : null;
 
-  const user = session
-    ? {
-        name: session.name,
-        email: session.email,
-        role: session.role,
-        membershipStatus: session.membershipStatus,
-      }
-    : null;
+  const session = await getSession();
+
+  let user = null;
+  if (session && session.userId) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        membership_status: true,
+      },
+    });
+
+    if (dbUser) {
+      user = {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        role: dbUser.role,
+        membershipStatus: dbUser.membership_status,
+      };
+    }
+  }
 
   return (
     <HomepageClient

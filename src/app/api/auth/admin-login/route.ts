@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: genericErrorMessage }, { status: 401 });
     }
 
-    // Admins are not allowed to log in via the public /login route
-    if (user.role === 'admin') {
+    // Require the role to be specifically 'admin'
+    if (user.role !== 'admin') {
       return NextResponse.json({ error: genericErrorMessage }, { status: 401 });
     }
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Login error:', error);
+    console.error('Admin login error:', error);
     return NextResponse.json(
       { error: 'Invalid email or password' },
       { status: 401 }

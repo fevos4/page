@@ -12,7 +12,6 @@ export interface SessionPayload {
   email: string;
   name: string;
   role: 'user' | 'admin';
-  membershipStatus: string;
   expiresAt: number;
 }
 

@@ -46,7 +46,6 @@ export async function POST(req: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role,
-      membershipStatus: user.membership_status,
     });
 
     return NextResponse.json(

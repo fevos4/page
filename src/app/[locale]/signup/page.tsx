@@ -1,10 +1,14 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { Link, useRouter } from '@/navigation';
+import { useTranslations } from 'next-intl';
 
 function SignupForm() {
+  const t = useTranslations('auth');
+  const tNav = useTranslations('nav');
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -32,12 +36,8 @@ function SignupForm() {
         throw new Error(data.error || 'Failed to sign up');
       }
 
-      if (callbackUrl) {
-        router.push(callbackUrl);
-      } else {
-        router.push('/');
-      }
-      router.refresh();
+      const targetUrl = callbackUrl || '/';
+      window.location.href = targetUrl;
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -47,8 +47,11 @@ function SignupForm() {
 
   return (
     <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-2xl">
-      <h1 className="text-2xl font-bold text-center mb-2 text-amber-500">Create Account</h1>
-      <p className="text-slate-400 text-sm text-center mb-6">Join Zahra Video Library</p>
+      <div className="flex justify-center mb-4">
+        <img src="/imgs/logo.png" alt="Zahra's Page Logo" className="h-16 md:h-20 w-auto object-contain" />
+      </div>
+      <h1 className="text-2xl font-bold text-center mb-2 text-amber-500">{t('createAccount')}</h1>
+      <p className="text-slate-400 text-sm text-center mb-6">{t('signupSubtext')}</p>
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/50 text-red-400 text-sm p-3 rounded mb-4">
@@ -58,7 +61,7 @@ function SignupForm() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs text-slate-400 font-medium mb-1">Full Name</label>
+          <label className="block text-xs text-slate-400 font-medium mb-1">{t('nameLabel')}</label>
           <input
             type="text"
             required
@@ -70,7 +73,7 @@ function SignupForm() {
         </div>
 
         <div>
-          <label className="block text-xs text-slate-400 font-medium mb-1">Email Address</label>
+          <label className="block text-xs text-slate-400 font-medium mb-1">{t('emailLabel')}</label>
           <input
             type="email"
             required
@@ -93,7 +96,7 @@ function SignupForm() {
         </div>
 
         <div>
-          <label className="block text-xs text-slate-400 font-medium mb-1">Password</label>
+          <label className="block text-xs text-slate-400 font-medium mb-1">{t('passwordLabel')}</label>
           <input
             type="password"
             required
@@ -109,17 +112,17 @@ function SignupForm() {
           disabled={loading}
           className="w-full bg-amber-500 hover:bg-amber-600 font-semibold text-slate-950 py-2.5 rounded text-sm transition disabled:opacity-50 mt-2"
         >
-          {loading ? 'Creating Account...' : 'Sign Up'}
+          {loading ? t('creatingAccount') : t('createAccount')}
         </button>
       </form>
 
       <p className="text-xs text-slate-500 text-center mt-6">
-        Already have an account?{' '}
+        {t('alreadyAccount')}{' '}
         <Link
           href={callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'}
-          className="text-amber-500 hover:underline"
+          className="text-amber-500 hover:underline font-semibold"
         >
-          Log in
+          {tNav('logIn')}
         </Link>
       </p>
     </div>

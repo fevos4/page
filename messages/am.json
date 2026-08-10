@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "home": "መነሻ",
+    "browse": "ቃኝ",
+    "membership": "አባልነት",
+    "joinNow": "አሁን ተቀላቀል",
+    "logIn": "ግባ",
+    "myAccount": "የእኔ መለያ",
+    "becomeMember": "አባል ሁን",
+    "renewMembership": "አባልነትን ያድሱ",
+    "logOut": "ውጣ",
+    "english": "English",
+    "amharic": "አማርኛ",
+    "oromo": "Afaan Oromoo"
+  },
+  "hero": {
+    "newPrefix": "አዲስ",
+    "headline1": "ያልተጣራ",
+    "headline2": "እና እውነተኛ",
+    "subtext": "ልዩ የአባልነት ቪዲዮ ቤተ-መጽሐፍት። ያልተጣሩ ታሪኮችን፣ ጥልቅ የምርመራ ተከታታዮችን እና የአባላት ብቻ ትዕይንቶችን ይልቀቁ።",
+    "joinNow": "አሁን ተቀላቀል",
+    "watchPreview": "ነፃ ቅድመ-እይታ ይመልከቱ"
+  },
+  "rows": {
+    "allTitles": "ሁሉም ርዕሶች እና ትዕይንቶች",
+    "freeBadge": "ነፃ",
+    "membersOnlyBadge": "ለአባላት ብቻ",
+    "unlock": "ክፈት",
+    "searchPlaceholder": "ርዕሶችን ወይም ክፍሎችን ፈልግ...",
+    "searchResultsFor": "የፍለጋ ውጤቶች ለ \"{query}\"",
+    "noResults": "ለ \"{query}\" ምንም ውጤት አልተገኘም",
+    "clearSearch": "ፍለጋን አጽዳ"
+  },
+  "modal": {
+    "forMembersOnly": "ለአባላት ብቻ",
+    "lockedSubtext": "ይህንን ቪዲዮ እና ሌሎችንም ለመክፈት ዛህራ ፔጅን ይቀላቀሉ።",
+    "becomeMember": "አባል ይሁኑ",
+    "renewMembership": "አባልነትን ያድሱ",
+    "logIn": "ግቡ",
+    "or": "ወይም",
+    "loadingStream": "የቪዲዮ ዥረት በመጫን ላይ...",
+    "streamErrorTitle": "ቪዲዮ ማጫወት አልተቻለም",
+    "streamErrorSubtext": "የቪዲዮ ፋይሉ ከማከማቻው ሊገኝ አልቻለም። እባክዎ ፋይሉን ይስቀሉ ወይም የአድሚን ዳሽቦርድ ላይ ያርትዑ።"
+  },
+  "membership": {
+    "title": "የአባልነት ዕቅድዎን ይምረጡ",
+    "subtitle": "ሁሉንም ልዩ የቪዲዮ ተከታታዮች፣ ትዕይንቶች እና የአባላት ይዘቶች ያግኙ።",
+    "monthlyPlan": "የወር አባልነት",
+    "annualPlan": "የዓመት አባልነት",
+    "perMonth": "/ በወር",
+    "perYear": "/ በዓመት",
+    "cbeInstructionTitle": "የኢትዮጵያ ንግድ ባንክ ሒሳብ ማስተላለፍ",
+    "accountNumber": "የሒሳብ ቁጥር",
+    "accountName": "የሒሳብ ስም",
+    "referenceNumber": "የግብይት ማጣቀሻ ቁጥር",
+    "amountClaimed": "የተከፈለው መጠን (ብር)",
+    "submitPayment": "ክፍያውን ለማረጋገጫ ያስገቡ",
+    "submitting": "በማስገባት ላይ...",
+    "successMessage": "ክፍያው በስኬት ተላከ! ሲረጋገጥ አባልነትዎ ይነቃቃል።"
+  },
+  "account": {
+    "title": "የእኔ መለያ",
+    "subtitle": "የአባልነት ሁኔታዎን እና የግል መገለጫዎን ያስተዳድሩ",
+    "settings": "የመለያ ቅንብሮች",
+    "profileInfo": "የመገለጫ መረጃ",
+    "securityPassword": "ደህንነት እና ምስጢረ-ቃል",
+    "saveName": "ስም አስቀምጥ",
+    "updatePassword": "ምስጢረ-ቃል አዘምን",
+    "freeMessage": "አሁን አባል አይደሉም። ልዩ ቪዲዮዎችን ለመክፈት አባል ይሁኑ።",
+    "pendingMessage": "ክፍያዎ በመገምገም ላይ ነው። ሲረጋገጥ እናሳውቅዎታለን።",
+    "activeUntil": "እስከ {date} ድረስ ይሰራል",
+    "expiredOn": "አባልነትዎ በ{date} አብቅቷል",
+    "cancelMembership": "ንቁ አባልነትን ሰርዝ",
+    "cancelConfirmTitle": "የአባልነት መሰረዝን ያረጋግጡ",
+    "cancelConfirmBody": "ሰረዛው አሁን ላይ መዳረሻዎን ያቋርጣል። ይህ ድርጊት አይመለስም።",
+    "confirmCancelBtn": "አዎ፣ አባልነቴን ሰርዝ",
+    "keepActiveBtn": "ይቆይ፣ ንቁ እንደሆነ ይቆይ"
+  },
+  "footer": {
+    "rights": "መብቱ በሕግ የተጠበቀ ነው።"
+  },
+  "auth": {
+    "welcomeBack": "እንኳን ደህና መጡ",
+    "loginSubtext": "ወደ ዛህራ መለያዎ ይግቡ",
+    "createAccount": "መለያ ፍጠር",
+    "signupSubtext": "የዛህራ ቪዲዮ ቤተ-መጽሐፍትን ይቀላቀሉ",
+    "emailLabel": "ኢሜይል አድራሻ",
+    "passwordLabel": "ምስጢረ-ቃል",
+    "nameLabel": "ሙሉ ስም",
+    "loggingIn": "በመግባት ላይ...",
+    "creatingAccount": "መለያ በመፍጠር ላይ...",
+    "noAccount": "መለያ የለዎትም?",
+    "alreadyAccount": "እስከ አሁን መለያ አለዎት?"
+  }
+}

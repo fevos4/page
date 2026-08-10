@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "home": "Mulaa",
+    "browse": "Barbaadi",
+    "membership": "Miseenummaa",
+    "joinNow": "Amma Itti Dabalamu",
+    "logIn": "Seeni",
+    "myAccount": "Akkaawuntii Koo",
+    "becomeMember": "Miseensa Ta'aa",
+    "renewMembership": "Miseensummaa Haaraomsaa",
+    "logOut": "Ba'i",
+    "english": "English",
+    "amharic": "አማርኛ",
+    "oromo": "Afaan Oromoo"
+  },
+  "hero": {
+    "newPrefix": "HAARAWA",
+    "headline1": "QULLAA",
+    "headline2": "FI DHUGAA",
+    "subtext": "Kuusaa viidiyoo miseenummaa addaa. Seenaawwan dhugaa, sagantaawwan sakatta'iinsaa fi qabiyyeewwan miseensotaa dabarsa.",
+    "joinNow": "AMMA ITTI DABALAMU",
+    "watchPreview": "DAWANNAA SAAMUDA FREE"
+  },
+  "rows": {
+    "allTitles": "MATA DUREEWWAN & AGARSIISAA HUDUMA",
+    "freeBadge": "BILAASH",
+    "membersOnlyBadge": "MISEENSA LAAFA",
+    "unlock": "Bani",
+    "searchPlaceholder": "Mata dureewwan ykn kutawwan barbaadi...",
+    "searchResultsFor": "Bu'aa barbaacha \"{query}\"",
+    "noResults": "Bu'aan \"{query}\" deebie hin jiru",
+    "clearSearch": "Barbaacha haqi"
+  },
+  "modal": {
+    "forMembersOnly": "Miseensotaaf Qofa",
+    "lockedSubtext": "Viidiyoo kana fi kanneen biroo banachuuf Zahra Page tii makamaa.",
+    "becomeMember": "Miseensa Ta'aa",
+    "renewMembership": "Miseensummaa Haaraomsaa",
+    "logIn": "Seenaa",
+    "or": "yookiin",
+    "loadingStream": "Viidiyoo fe'aa jira...",
+    "streamErrorTitle": "Viidiyoo Taphachiisuu Hin Danda'amne",
+    "streamErrorSubtext": "Fayiliin viidiyoo kuusaa irraa hin argamne. Maaloo fayila fe'aa ykn kuusaa edit godhaa."
+  },
+  "membership": {
+    "title": "Karoora Miseenummaa Keessan Filadhaa",
+    "subtitle": "Dabarsa viidiyoowwan agarsiisa miseensotaa hunda banadhaa.",
+    "monthlyPlan": "Karoora Ji'aa",
+    "annualPlan": "Karoora Waggaa",
+    "perMonth": "/ ji'atti",
+    "perYear": "/ waggaatti",
+    "cbeInstructionTitle": "Kaffaltii Baankii Daldala Itoophiyaa (CBE)",
+    "accountNumber": "Lakkoofsa Akkaawuntii",
+    "accountName": "Maqaa Akkaawuntii",
+    "referenceNumber": "Lakkoofsa Madaallii Kaffaltii",
+    "amountClaimed": "Hamma Kaffalame (ETB)",
+    "submitPayment": "Kaffaltii Mirkaneessaaf Ergaa",
+    "submitting": "Ergaa jira...",
+    "successMessage": "Kaffaltiin milkaaiinaan ergameera! Akkuma mirkanaa'een ni banama."
+  },
+  "account": {
+    "title": "Akkaawuntii Koo",
+    "subtitle": "Haala miseenummaa fi odeeffannoo dhuunfaa keessan bulchaa",
+    "settings": "Qindaa'ina Akkaawuntii",
+    "profileInfo": "Odeeffannoo Profilii",
+    "securityPassword": "Nageenya fi Jecha Darbiinsaa",
+    "saveName": "Maqaa Olkaai",
+    "updatePassword": "Jecha Darbiinsaa Haaromsi",
+    "freeMessage": "Amma miseensa miti. Viidiyoowwan kaffaltii banachuuf miseensa tahaa.",
+    "pendingMessage": "Kaffaltiin keessan sakatta'amaa jira. Akkuma mirkanaa'een isiniif erga.",
+    "activeUntil": "Hanga {date}tti ni hojjeta",
+    "expiredOn": "Miseenummaan keessan {date} irratti dhumeera",
+    "cancelMembership": "Miseenummaa Hojjetu Haqi",
+    "cancelConfirmTitle": "Haqama Miseenummaa Mirkaneessi",
+    "cancelConfirmBody": "Haqansi dhiyeessii keessan battalatti dhaaba. Kun boodatti hin deebi'u.",
+    "confirmCancelBtn": "Eeyyee, miseenummaa koo haqi",
+    "keepActiveBtn": "Dhiisi, haa hojjetu"
+  },
+  "footer": {
+    "rights": "Mirgi hundi eegamaadha."
+  },
+  "auth": {
+    "welcomeBack": "Baga Nagaan Deebitan",
+    "loginSubtext": "Akkaawuntii Zahra keessaniin seenaa",
+    "createAccount": "Akkaawuntii Uumaa",
+    "signupSubtext": "Kuusaa Viidiyoo Zahraatti dabalamaa",
+    "emailLabel": "Teessoo Imeelii",
+    "passwordLabel": "Jecha Darbiinsaa",
+    "nameLabel": "Maqaa Guutuu",
+    "loggingIn": "Seenaa jira...",
+    "creatingAccount": "Akkaawuntii uumaa jira...",
+    "noAccount": "Akkaawuntii hin qabdan?",
+    "alreadyAccount": "Akkaawuntii qabduu?"
+  }
+}

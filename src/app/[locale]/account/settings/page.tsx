@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link, useRouter } from '@/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { useTranslations } from 'next-intl';
 import { User, Lock, AlertTriangle, LogOut, CheckCircle } from 'lucide-react';
+import LoadingLogo from '@/components/LoadingLogo';
 
 interface AccountUser {
   id: string;
@@ -15,6 +17,9 @@ interface AccountUser {
 }
 
 export default function SettingsPage() {
+  const t = useTranslations('account');
+  const tNav = useTranslations('nav');
+
   const [user, setUser] = useState<AccountUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +43,10 @@ export default function SettingsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/auth/me')
+    fetch(`/api/auth/me?_=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' },
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.user) {
@@ -150,7 +158,73 @@ export default function SettingsPage() {
 
   if (!user) return null;
 
-  const isActiveMember = user.membershipStatus === 'active';
+  const renderMembershipSection = () => {
+    switch (user.membershipStatus) {
+      case 'active':
+        return (
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-bold text-red-600 dark:text-red-400 block">{t('cancelMembership')}</span>
+              <span className="text-[11px] text-slate-500">
+                {t('cancelConfirmBody')}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowCancelModal(true)}
+              className="bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-500/30 text-xs font-bold px-4 py-2 rounded transition flex-shrink-0"
+            >
+              {t('cancelMembership')}
+            </button>
+          </div>
+        );
+
+      case 'pending_verification':
+        return (
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4">
+            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 p-3 rounded border border-amber-500/30">
+              {t('pendingMessage')}
+            </p>
+          </div>
+        );
+
+      case 'expired':
+        return (
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-bold text-amber-500 block">{tNav('becomeMember')}</span>
+              <span className="text-[11px] text-slate-500">
+                {t('freeMessage')}
+              </span>
+            </div>
+            <Link
+              href="/membership"
+              className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs uppercase px-4 py-2 rounded-none tracking-wider transition flex-shrink-0"
+            >
+              {tNav('becomeMember')}
+            </Link>
+          </div>
+        );
+
+      case 'free':
+      default:
+        return (
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">{tNav('becomeMember')}</span>
+              <span className="text-[11px] text-slate-500">
+                {t('freeMessage')}
+              </span>
+            </div>
+            <Link
+              href="/membership"
+              className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs uppercase px-4 py-2 rounded-none tracking-wider transition flex-shrink-0"
+            >
+              {tNav('becomeMember')}
+            </Link>
+          </div>
+        );
+    }
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-6 md:p-12 font-sans transition-colors duration-200">
@@ -159,19 +233,20 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
           <div>
             <h1 className="text-3xl font-extrabold text-amber-500 font-display uppercase tracking-wide">
-              Account Settings
+              {t('settings')}
             </h1>
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Manage personal details, password security, and subscription status
+              {t('subtitle')}
             </p>
           </div>
           <div className="flex items-center space-x-3">
+            <LanguageSwitcher />
             <ThemeToggle />
             <Link
               href="/account"
               className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded transition"
             >
-              ← Back to Account
+              ← {t('title')}
             </Link>
           </div>
         </div>
@@ -331,22 +406,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {isActiveMember && (
-            <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-red-600 dark:text-red-400 block">Cancel Active Membership</span>
-                <span className="text-[11px] text-slate-500">
-                  Immediately ends your membership access and disables premium content.
-                </span>
-              </div>
-              <button
-                onClick={() => setShowCancelModal(true)}
-                className="bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-500/30 text-xs font-bold px-4 py-2 rounded transition"
-              >
-                Cancel Membership
-              </button>
-            </div>
-          )}
+          {renderMembershipSection()}
         </div>
       </div>
 

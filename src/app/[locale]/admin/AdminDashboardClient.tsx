@@ -44,12 +44,18 @@ interface Member {
   membership_expiry_date?: string;
 }
 
+const ITEMS_PER_PAGE = 8;
+
 export default function AdminDashboardClient() {
   const [activeTab, setActiveTab] = useState<'titles' | 'payments' | 'members'>('payments');
   const [titles, setTitles] = useState<Title[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Pagination states
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [membersPage, setMembersPage] = useState(1);
 
   // New Title Form
   const [newTitleName, setNewTitleName] = useState('');
@@ -68,6 +74,58 @@ export default function AdminDashboardClient() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Edit Video Form State
+  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
+  const [editVideoTitle, setEditVideoTitle] = useState('');
+  const [editVideoDesc, setEditVideoDesc] = useState('');
+  const [editVideoSourceType, setEditVideoSourceType] = useState<'self_hosted' | 'embed'>('self_hosted');
+  const [editVideoFormat, setEditVideoFormat] = useState<'landscape' | 'portrait'>('landscape');
+  const [editEmbedUrl, setEditEmbedUrl] = useState('');
+  const [editIsFree, setEditIsFree] = useState(false);
+  const [editPosition, setEditPosition] = useState<number>(1);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const handleOpenEditVideoModal = (video: Video) => {
+    setEditingVideo(video);
+    setEditVideoTitle(video.title);
+    setEditVideoDesc(video.description || '');
+    setEditVideoSourceType(video.source_type);
+    setEditVideoFormat(video.format);
+    setEditEmbedUrl(video.embed_url || '');
+    setEditIsFree(video.is_free);
+    setEditPosition(video.position || 1);
+  };
+
+  const handleSaveEditVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVideo) return;
+
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/admin/videos/${editingVideo.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editVideoTitle,
+          description: editVideoDesc,
+          source_type: editVideoSourceType,
+          format: editVideoFormat,
+          embed_url: editEmbedUrl,
+          is_free: editIsFree,
+          position: editPosition,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update video');
+      setEditingVideo(null);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -76,6 +134,7 @@ export default function AdminDashboardClient() {
         fetch('/api/admin/payments'),
         fetch('/api/admin/members'),
       ]);
+
       const tData = await tRes.json();
       const pData = await pRes.json();
       const mData = await mRes.json();
@@ -83,8 +142,8 @@ export default function AdminDashboardClient() {
       if (tData.titles) setTitles(tData.titles);
       if (pData.payments) setPayments(pData.payments);
       if (mData.members) setMembers(mData.members);
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error('Error fetching admin data:', err);
     } finally {
       setLoading(false);
     }
@@ -96,135 +155,140 @@ export default function AdminDashboardClient() {
 
   const handleCreateTitle = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitleName) return;
+    if (!newTitleName.trim()) return;
 
-    let coverImagePath: string | null = null;
+    setUploadingCover(true);
+    try {
+      let cover_image_path = '';
 
-    if (coverFile) {
-      setUploadingCover(true);
-      try {
-        const urlRes = await fetch('/api/admin/videos/upload-url', {
+      if (coverFile) {
+        const signRes = await fetch('/api/admin/videos/upload-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            fileName: coverFile.name,
-            contentType: coverFile.type || 'image/jpeg',
+            filename: `covers/${Date.now()}-${coverFile.name}`,
+            contentType: coverFile.type,
           }),
         });
 
-        const { uploadUrl, objectPath } = await urlRes.json();
+        const signData = await signRes.json();
+        if (!signRes.ok) throw new Error(signData.error || 'Failed to get upload URL');
 
-        const putRes = await fetch(uploadUrl, {
+        const uploadRes = await fetch(signData.uploadUrl, {
           method: 'PUT',
-          headers: { 'Content-Type': coverFile.type || 'image/jpeg' },
           body: coverFile,
+          headers: { 'Content-Type': coverFile.type },
         });
 
-        if (!putRes.ok) {
-          throw new Error('Direct-to-MinIO cover image upload failed');
-        }
-
-        coverImagePath = objectPath;
-      } catch (err: any) {
-        alert(err.message);
-        setUploadingCover(false);
-        return;
+        if (!uploadRes.ok) throw new Error('Failed to upload cover to storage');
+        cover_image_path = signData.objectKey;
       }
+
+      const res = await fetch('/api/admin/titles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newTitleName,
+          description: newTitleDesc,
+          cover_image_path,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to create title');
+
+      setNewTitleName('');
+      setNewTitleDesc('');
+      setCoverFile(null);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setUploadingCover(false);
     }
-
-    await fetch('/api/admin/titles', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: newTitleName,
-        description: newTitleDesc,
-        cover_image_path: coverImagePath,
-      }),
-    });
-
-    setUploadingCover(false);
-    setNewTitleName('');
-    setNewTitleDesc('');
-    setCoverFile(null);
-    fetchData();
   };
 
   const handleCreateVideo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTitleId || !videoTitle) return;
+    if (!selectedTitleId || !videoTitle.trim()) return;
 
-    let filePath: string | null = null;
+    setUploading(true);
+    try {
+      let file_path = '';
 
-    if (sourceType === 'self_hosted') {
-      if (!selectedFile) {
-        alert('Please select a video file to upload');
-        return;
-      }
-
-      setUploading(true);
-      try {
-        const urlRes = await fetch('/api/admin/videos/upload-url', {
+      if (sourceType === 'self_hosted' && selectedFile) {
+        const signRes = await fetch('/api/admin/videos/upload-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            fileName: selectedFile.name,
-            contentType: selectedFile.type || 'video/mp4',
+            filename: `videos/${Date.now()}-${selectedFile.name}`,
+            contentType: selectedFile.type,
           }),
         });
 
-        const { uploadUrl, objectPath } = await urlRes.json();
+        const signData = await signRes.json();
+        if (!signRes.ok) throw new Error(signData.error || 'Failed to get upload URL');
 
-        const putRes = await fetch(uploadUrl, {
+        const uploadRes = await fetch(signData.uploadUrl, {
           method: 'PUT',
-          headers: { 'Content-Type': selectedFile.type || 'video/mp4' },
           body: selectedFile,
+          headers: { 'Content-Type': selectedFile.type },
         });
 
-        if (!putRes.ok) {
-          throw new Error('Direct-to-MinIO video upload failed');
-        }
-
-        filePath = objectPath;
-      } catch (err: any) {
-        alert(err.message);
-        setUploading(false);
-        return;
+        if (!uploadRes.ok) throw new Error('Failed to upload video to storage');
+        file_path = signData.objectKey;
       }
+
+      const res = await fetch('/api/admin/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title_id: selectedTitleId,
+          title: videoTitle,
+          description: videoDesc,
+          source_type: sourceType,
+          format: videoFormat,
+          embed_url: sourceType === 'embed' ? embedUrl : '',
+          file_path,
+          is_free: isFree,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to save video database record');
+
+      setVideoTitle('');
+      setVideoDesc('');
+      setEmbedUrl('');
+      setSelectedFile(null);
+      setIsFree(false);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setUploading(false);
     }
-
-    await fetch('/api/admin/videos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title_id: selectedTitleId,
-        title: videoTitle,
-        description: videoDesc,
-        source_type: sourceType,
-        format: videoFormat,
-        embed_url: sourceType === 'embed' ? embedUrl : null,
-        file_path: filePath,
-        is_free: sourceType === 'embed' ? true : isFree,
-      }),
-    });
-
-    setUploading(false);
-    setVideoTitle('');
-    setVideoDesc('');
-    setEmbedUrl('');
-    setVideoFormat('landscape');
-    setSelectedFile(null);
-    fetchData();
   };
 
-  const handleDeleteVideo = async (videoId: string) => {
-    if (!confirm('Are you sure you want to delete this video? The file in MinIO will also be deleted.')) return;
+  const handleDeleteVideo = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this video?')) return;
 
-    await fetch(`/api/admin/videos/${videoId}`, { method: 'DELETE' });
-    fetchData();
+    try {
+      const res = await fetch(`/api/admin/videos/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete video');
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   const handleReviewPayment = async (paymentId: string, action: 'approve' | 'reject') => {
-    const reason = action === 'reject' ? prompt('Enter rejection reason:') : null;
+    let reason = '';
+    if (action === 'reject') {
+      const input = prompt('Please enter the rejection reason:');
+      if (input === null) return;
+      reason = input.trim();
+    }
 
     await fetch('/api/admin/payments', {
       method: 'POST',
@@ -244,15 +308,32 @@ export default function AdminDashboardClient() {
     window.location.href = '/login';
   };
 
+  // Pagination calculations for payments
+  const totalPaymentsPages = Math.ceil(payments.length / ITEMS_PER_PAGE);
+  const currentPayments = payments.slice(
+    (paymentsPage - 1) * ITEMS_PER_PAGE,
+    paymentsPage * ITEMS_PER_PAGE
+  );
+
+  // Pagination calculations for members
+  const totalMembersPages = Math.ceil(members.length / ITEMS_PER_PAGE);
+  const currentMembers = members.slice(
+    (membersPage - 1) * ITEMS_PER_PAGE,
+    membersPage * ITEMS_PER_PAGE
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-6 space-y-6 transition-colors duration-200">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-amber-500">Admin Dashboard</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Content Management & CBE Payment Verification Queue
-          </p>
+        <div className="flex items-center space-x-3">
+          <img src="/imgs/logo.png" alt="Zahra's Page Logo" className="h-12 md:h-14 w-auto object-contain" />
+          <div>
+            <h1 className="text-2xl font-bold text-amber-500">Admin Dashboard</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Content Management & CBE Payment Verification Queue
+            </p>
+          </div>
         </div>
         <div className="flex items-center space-x-3">
           <ThemeToggle />
@@ -274,7 +355,7 @@ export default function AdminDashboardClient() {
       {/* Nav Tabs */}
       <div className="flex space-x-2 border-b border-slate-200 dark:border-slate-800 pb-2">
         <button
-          onClick={() => setActiveTab('payments')}
+          onClick={() => { setActiveTab('payments'); setPaymentsPage(1); }}
           className={`px-4 py-2 text-sm font-semibold rounded-none transition ${
             activeTab === 'payments'
               ? 'bg-amber-400 text-slate-950'
@@ -294,7 +375,7 @@ export default function AdminDashboardClient() {
           Titles & Videos
         </button>
         <button
-          onClick={() => setActiveTab('members')}
+          onClick={() => { setActiveTab('members'); setMembersPage(1); }}
           className={`px-4 py-2 text-sm font-semibold rounded-none transition ${
             activeTab === 'members'
               ? 'bg-amber-400 text-slate-950'
@@ -326,7 +407,7 @@ export default function AdminDashboardClient() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {payments.map((p) => (
+                {currentPayments.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
                     <td className="p-4 font-medium text-slate-900 dark:text-slate-100">
                       {p.user.name}
@@ -375,6 +456,31 @@ export default function AdminDashboardClient() {
                 ))}
               </tbody>
             </table>
+
+            {/* Payments Pagination Controls */}
+            {totalPaymentsPages > 1 && (
+              <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950">
+                <span className="text-xs text-slate-500">
+                  Page {paymentsPage} of {totalPaymentsPages}
+                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setPaymentsPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={paymentsPage === 1}
+                    className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setPaymentsPage((prev) => Math.min(prev + 1, totalPaymentsPages))}
+                    disabled={paymentsPage === totalPaymentsPages}
+                    className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -568,12 +674,20 @@ export default function AdminDashboardClient() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleDeleteVideo(v.id)}
-                        className="text-red-600 dark:text-red-400 hover:underline text-xs font-bold"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={() => handleOpenEditVideoModal(v)}
+                          className="text-amber-600 dark:text-amber-400 hover:underline text-xs font-bold"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVideo(v.id)}
+                          className="text-red-600 dark:text-red-400 hover:underline text-xs font-bold"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -602,7 +716,7 @@ export default function AdminDashboardClient() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {members.map((m) => (
+                {currentMembers.map((m) => (
                   <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
                     <td className="p-4 font-medium text-slate-900 dark:text-slate-100">{m.name}</td>
                     <td className="p-4 text-slate-500 dark:text-slate-400">{m.email}</td>
@@ -633,6 +747,161 @@ export default function AdminDashboardClient() {
                 ))}
               </tbody>
             </table>
+
+            {/* Members Pagination Controls */}
+            {totalMembersPages > 1 && (
+              <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950">
+                <span className="text-xs text-slate-500">
+                  Page {membersPage} of {totalMembersPages}
+                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setMembersPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={membersPage === 1}
+                    className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setMembersPage((prev) => Math.min(prev + 1, totalMembersPages))}
+                    disabled={membersPage === totalMembersPages}
+                    className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Edit Video Modal */}
+      {editingVideo && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-6 max-w-lg w-full shadow-2xl space-y-4 text-slate-900 dark:text-slate-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                Edit Video: {editingVideo.title}
+              </h3>
+              <button
+                onClick={() => setEditingVideo(null)}
+                className="text-slate-400 hover:text-slate-100 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditVideo} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Episode Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editVideoTitle}
+                  onChange={(e) => setEditVideoTitle(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={editVideoDesc}
+                  onChange={(e) => setEditVideoDesc(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Source Type
+                </label>
+                <select
+                  value={editVideoSourceType}
+                  onChange={(e) => setEditVideoSourceType(e.target.value as any)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                >
+                  <option value="embed">Embed (Public / YouTube)</option>
+                  <option value="self_hosted">Self Hosted (MinIO Storage)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Video Format
+                </label>
+                <select
+                  value={editVideoFormat}
+                  onChange={(e) => setEditVideoFormat(e.target.value as any)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                >
+                  <option value="landscape">Landscape (16:9)</option>
+                  <option value="portrait">Portrait (9:16 - Short)</option>
+                </select>
+              </div>
+
+              {editVideoSourceType === 'embed' && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Embed URL
+                  </label>
+                  <input
+                    type="url"
+                    value={editEmbedUrl}
+                    onChange={(e) => setEditEmbedUrl(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Sorting Position (1 = first)
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={editPosition}
+                  onChange={(e) => setEditPosition(parseInt(e.target.value) || 1)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="editIsFree"
+                  checked={editIsFree}
+                  onChange={(e) => setEditIsFree(e.target.checked)}
+                  className="rounded bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-amber-500"
+                />
+                <label htmlFor="editIsFree" className="text-xs text-slate-700 dark:text-slate-300">
+                  Is Free (Anyone can view)
+                </label>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingVideo(null)}
+                  className="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold px-4 py-2 rounded transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold px-4 py-2 rounded transition disabled:opacity-50"
+                >
+                  {savingEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

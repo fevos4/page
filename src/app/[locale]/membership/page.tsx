@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { Link } from '@/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { useTranslations } from 'next-intl';
+import { Clock, CheckCircle } from 'lucide-react';
 
 interface Plan {
   id: string;
@@ -12,6 +15,9 @@ interface Plan {
 }
 
 export default function MembershipPage() {
+  const t = useTranslations('membership');
+  const tNav = useTranslations('nav');
+
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -19,6 +25,7 @@ export default function MembershipPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [userStatus, setUserStatus] = useState<string | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/membership-plans')
@@ -33,7 +40,10 @@ export default function MembershipPage() {
         }
       });
 
-    fetch('/api/auth/me')
+    fetch(`/api/auth/me?_=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' },
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.user) {
@@ -44,7 +54,8 @@ export default function MembershipPage() {
       })
       .catch(() => {
         window.location.href = '/login?callbackUrl=/membership';
-      });
+      })
+      .finally(() => setPageLoading(false));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,9 +81,11 @@ export default function MembershipPage() {
 
       setMessage({
         type: 'success',
-        text: 'Payment reference submitted successfully! An admin will manually verify it shortly.',
+        text: t('successMessage'),
       });
       setReferenceNumber('');
+      // Immediately update local state to pending so form disappears on this session
+      setUserStatus('pending_verification');
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
     } finally {
@@ -80,26 +93,107 @@ export default function MembershipPage() {
     }
   };
 
-  return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8 transition-colors duration-200">
-      <div className="max-w-3xl mx-auto space-y-8">
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-amber-500">Zahra Membership</h1>
-            <p className="text-slate-600 dark:text-slate-400 text-sm">
-              Unlock all members-only documentary series & videos
+  const navHeader = (
+    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+      <div>
+        <h1 className="text-3xl font-bold text-amber-500">{t('title')}</h1>
+        <p className="text-slate-600 dark:text-slate-400 text-sm">
+          {t('subtitle')}
+        </p>
+      </div>
+      <div className="flex items-center space-x-3">
+        <LanguageSwitcher />
+        <ThemeToggle />
+        <Link
+          href="/"
+          className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-300 px-3 py-1.5 rounded transition"
+        >
+          ← {tNav('home')}
+        </Link>
+      </div>
+    </div>
+  );
+
+  // ── LOADING ──────────────────────────────────────────────────────────────────
+  if (pageLoading) {
+    return (
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8 transition-colors duration-200">
+        <div className="max-w-3xl mx-auto space-y-8">
+          {navHeader}
+          <div className="text-amber-500 font-mono text-sm animate-pulse text-center py-16">Loading...</div>
+        </div>
+      </main>
+    );
+  }
+
+  // ── ALREADY AN ACTIVE MEMBER ─────────────────────────────────────────────────
+  if (userStatus === 'active') {
+    return (
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8 transition-colors duration-200">
+        <div className="max-w-3xl mx-auto space-y-8">
+          {navHeader}
+          <div className="bg-white dark:bg-slate-900 border border-emerald-500/30 rounded-xl p-8 shadow-md dark:shadow-xl flex flex-col items-center text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+              <CheckCircle className="w-7 h-7 text-emerald-500" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">You're already a member!</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+              Your membership is currently active. You have full access to all exclusive videos on Zahra's Page.
             </p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <ThemeToggle />
             <Link
               href="/"
-              className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-300 px-3 py-1.5 rounded transition"
+              className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs uppercase px-6 py-2.5 rounded-none tracking-wider transition mt-2"
             >
-              ← Back to Library
+              ← Back to Home
             </Link>
           </div>
         </div>
+      </main>
+    );
+  }
+
+  // ── PENDING REVIEW ────────────────────────────────────────────────────────────
+  if (userStatus === 'pending_verification') {
+    return (
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8 transition-colors duration-200">
+        <div className="max-w-3xl mx-auto space-y-8">
+          {navHeader}
+          <div className="bg-white dark:bg-slate-900 border border-amber-500/30 rounded-xl p-8 shadow-md dark:shadow-xl flex flex-col items-center text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+              <Clock className="w-7 h-7 text-amber-500 animate-pulse" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Payment Under Review</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+              Your payment submission is currently being reviewed by our team. We'll activate your membership as soon as it's verified — usually within 24 hours.
+            </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded px-4 py-2">
+              Please do not resubmit — your payment is already in the queue.
+            </p>
+            <div className="flex items-center space-x-3 pt-2">
+              <Link
+                href="/account"
+                className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs uppercase px-5 py-2.5 rounded-none tracking-wider transition"
+              >
+                View My Account
+              </Link>
+              <Link
+                href="/"
+                className="border border-slate-300 dark:border-slate-700 hover:border-slate-400 text-slate-600 dark:text-slate-400 font-bold text-xs uppercase px-5 py-2.5 rounded-none tracking-wider transition"
+              >
+                ← Back to Home
+              </Link>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ── PAYMENT SUBMISSION FORM (free / expired users) ────────────────────────────
+  return (
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8 transition-colors duration-200">
+      <div className="max-w-3xl mx-auto space-y-8">
+        {navHeader}
 
         {/* Bank Transfer Details Section */}
         <div className="bg-white dark:bg-slate-900 border border-amber-500/30 rounded-xl p-6 shadow-md dark:shadow-xl space-y-4 transition-colors duration-200">

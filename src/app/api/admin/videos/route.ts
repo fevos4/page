@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { normalizeEmbedUrl } from '@/lib/videoUtils';
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -34,8 +35,19 @@ export async function POST(req: NextRequest) {
   // Embed video rule check: If source_type is 'embed', is_free MUST be true
   const freeFlag = source_type === 'embed' ? true : Boolean(is_free);
 
-  if (source_type === 'embed' && !embed_url) {
-    return NextResponse.json({ error: 'embed_url is required for embed videos' }, { status: 400 });
+  let normalizedEmbedUrl: string | null = null;
+  if (source_type === 'embed') {
+    if (!embed_url) {
+      return NextResponse.json({ error: 'embed_url is required for embed videos' }, { status: 400 });
+    }
+    try {
+      normalizedEmbedUrl = normalizeEmbedUrl(embed_url);
+    } catch (err: any) {
+      return NextResponse.json(
+        { error: err.message || "Couldn't recognize this as a valid YouTube or TikTok video URL. Please paste a direct video link." },
+        { status: 400 }
+      );
+    }
   }
 
   if (source_type === 'self_hosted' && !file_path) {
@@ -58,7 +70,7 @@ export async function POST(req: NextRequest) {
       source_type,
       format: videoFormat,
       file_path: file_path || null,
-      embed_url: embed_url || null,
+      embed_url: normalizedEmbedUrl,
       thumbnail_path: thumbnail_path || null,
       is_free: freeFlag,
       position: newPosition,

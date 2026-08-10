@@ -11,8 +11,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Soria', '"Cormorant Garamond"', '"Playfair Display"', 'Cinzel', 'serif'],
-        display: ['"Bebas Neue"', 'Impact', 'sans-serif'],
+        sans: ['var(--font-poppins)', 'Poppins', 'sans-serif'],
+        display: ['var(--font-poppins)', 'Poppins', 'sans-serif'],
       },
     },
   },

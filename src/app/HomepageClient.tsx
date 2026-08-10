@@ -29,6 +29,7 @@ interface Title {
 interface HomepageClientProps {
   titles: Title[];
   user: {
+    id?: string;
     name: string;
     email: string;
     role: string;
@@ -126,11 +127,9 @@ export default function HomepageClient({
             : 'bg-gradient-to-b from-slate-950/90 via-slate-950/40 to-transparent'
         }`}
       >
-        <div className="flex items-center min-w-[200px]">
+        <div className="flex items-center">
           <Link href="/" className="flex items-center">
-            <span className="text-3xl font-normal tracking-[0.08em] text-white uppercase font-display leading-none">
-              ZAHRA&apos;S <span className="text-amber-400">PAGE</span>
-            </span>
+            <img src="/imgs/logo.png" alt="Zahra's Page Logo" className="h-12 md:h-16 w-auto object-contain transition-all hover:scale-105" />
           </Link>
         </div>
 

@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "home": "Home",
+    "browse": "Browse",
+    "membership": "Membership",
+    "joinNow": "Join Now",
+    "logIn": "Log In",
+    "myAccount": "My Account",
+    "becomeMember": "Become a Member",
+    "renewMembership": "Renew Membership",
+    "logOut": "Log Out",
+    "english": "English",
+    "amharic": "አማርኛ",
+    "oromo": "Afaan Oromoo"
+  },
+  "hero": {
+    "newPrefix": "NEW",
+    "headline1": "UNFILTERED",
+    "headline2": "AND REAL",
+    "subtext": "Exclusive membership video library. Streaming unfiltered stories, deep-dive investigative series, and members-only shows.",
+    "joinNow": "JOIN NOW",
+    "watchPreview": "WATCH FREE PREVIEW"
+  },
+  "rows": {
+    "allTitles": "ALL TITLES & SHOWS",
+    "freeBadge": "FREE",
+    "membersOnlyBadge": "MEMBERS ONLY",
+    "unlock": "Unlock",
+    "searchPlaceholder": "Search titles or episodes...",
+    "searchResultsFor": "Search results for \"{query}\"",
+    "noResults": "No results found for \"{query}\"",
+    "clearSearch": "Clear search"
+  },
+  "modal": {
+    "forMembersOnly": "For Members Only",
+    "lockedSubtext": "Join Zahra's Page to unlock this video and more.",
+    "becomeMember": "Become a Member",
+    "renewMembership": "Renew Membership",
+    "logIn": "Log In",
+    "or": "or",
+    "loadingStream": "Loading video stream...",
+    "streamErrorTitle": "Unable to Stream Video",
+    "streamErrorSubtext": "The self-hosted video file could not be found or loaded from MinIO storage. Please upload the video file or edit the video source in the admin dashboard."
+  },
+  "membership": {
+    "title": "Choose Your Membership Plan",
+    "subtitle": "Unlock full access to all exclusive video series, shows, and members-only content.",
+    "monthlyPlan": "Monthly Pass",
+    "annualPlan": "Annual Pass",
+    "perMonth": "/ month",
+    "perYear": "/ year",
+    "cbeInstructionTitle": "CBE Bank Transfer Payment",
+    "accountNumber": "Account Number",
+    "accountName": "Account Name",
+    "referenceNumber": "Transaction Reference Number",
+    "amountClaimed": "Amount Paid (ETB)",
+    "submitPayment": "Submit Payment for Verification",
+    "submitting": "Submitting...",
+    "successMessage": "Payment submitted successfully! Your membership will be activated once verified."
+  },
+  "account": {
+    "title": "My Account",
+    "subtitle": "Manage your membership status and personal profile",
+    "settings": "Account Settings",
+    "profileInfo": "Profile Information",
+    "securityPassword": "Security & Password",
+    "saveName": "Save Name",
+    "updatePassword": "Update Password",
+    "freeMessage": "You're not currently a member. Become a member to unlock exclusive videos.",
+    "pendingMessage": "Your payment is being reviewed. We'll notify you once it's verified.",
+    "activeUntil": "Active until {date}",
+    "expiredOn": "Your membership expired on {date}",
+    "cancelMembership": "Cancel Active Membership",
+    "cancelConfirmTitle": "Confirm Membership Cancellation",
+    "cancelConfirmBody": "Cancelling immediately ends your access, including any remaining days you've already paid for. This cannot be undone.",
+    "confirmCancelBtn": "Yes, cancel my membership",
+    "keepActiveBtn": "Nevermind, keep active"
+  },
+  "footer": {
+    "rights": "All rights reserved."
+  },
+  "auth": {
+    "welcomeBack": "Welcome Back",
+    "loginSubtext": "Log in to your Zahra account",
+    "createAccount": "Create Account",
+    "signupSubtext": "Join Zahra Video Library",
+    "emailLabel": "Email Address",
+    "passwordLabel": "Password",
+    "nameLabel": "Full Name",
+    "loggingIn": "Logging in...",
+    "creatingAccount": "Creating account...",
+    "noAccount": "Don't have an account?",
+    "alreadyAccount": "Already have an account?"
+  }
+}
