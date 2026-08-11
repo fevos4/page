@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { normalizeEmbedUrl } from '@/lib/videoUtils';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session || session.role !== 'admin') {

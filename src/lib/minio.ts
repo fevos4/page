@@ -14,21 +14,26 @@ const port = process.env.MINIO_PORT || '9000';
 const useSSL = process.env.MINIO_USE_SSL === 'true';
 const protocol = useSSL ? 'https' : 'http';
 
+const isR2 = process.env.STORAGE_PROVIDER === 'r2';
+const r2Endpoint = `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+const minioEndpoint = `${protocol}://${endpoint}:${port}`;
+
 export const s3Client = new S3Client({
-  region: 'us-east-1',
-  endpoint: `${protocol}://${endpoint}:${port}`,
+  region: isR2 ? 'auto' : 'us-east-1',
+  endpoint: isR2 ? r2Endpoint : minioEndpoint,
   credentials: {
-    accessKeyId: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-    secretAccessKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+    accessKeyId: isR2 ? (process.env.R2_ACCESS_KEY_ID || '') : (process.env.MINIO_ACCESS_KEY || 'minioadmin'),
+    secretAccessKey: isR2 ? (process.env.R2_SECRET_ACCESS_KEY || '') : (process.env.MINIO_SECRET_KEY || 'minioadmin'),
   },
-  forcePathStyle: true,
+  forcePathStyle: !isR2,
 });
 
-export const BUCKET_NAME = process.env.MINIO_BUCKET || 'videos';
+export const BUCKET_NAME = process.env.STORAGE_BUCKET || 'videos';
 
 let bucketVerified = false;
 
 export async function ensureBucketExists(): Promise<void> {
+  if (isR2) return;
   if (bucketVerified) return;
 
   try {

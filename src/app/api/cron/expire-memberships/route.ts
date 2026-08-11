@@ -4,6 +4,8 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key');
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   return handleCron(req);
 }

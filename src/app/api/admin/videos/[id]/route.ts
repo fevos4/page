@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth';
 import { deleteMinIOObject } from '@/lib/minio';
 import { normalizeEmbedUrl } from '@/lib/videoUtils';
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
