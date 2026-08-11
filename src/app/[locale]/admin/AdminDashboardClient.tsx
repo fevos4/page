@@ -151,6 +151,17 @@ export default function AdminDashboardClient() {
 
   useEffect(() => {
     fetchData();
+
+    // Query auth/me to dynamically show "Manage Admins" button if role is super_admin
+    fetch(`/api/auth/me?_=${Date.now()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user && data.user.role === 'super_admin') {
+          const btn = document.getElementById('manage-admins-nav-btn');
+          if (btn) btn.style.display = 'inline-block';
+        }
+      })
+      .catch((err) => console.error('Error fetching user role:', err));
   }, []);
 
   const handleCreateTitle = async (e: React.FormEvent) => {
@@ -305,7 +316,7 @@ export default function AdminDashboardClient() {
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    window.location.href = '/login';
+    window.location.href = '/admin-login';
   };
 
   // Pagination calculations for payments
@@ -337,6 +348,14 @@ export default function AdminDashboardClient() {
         </div>
         <div className="flex items-center space-x-3">
           <ThemeToggle />
+          <Link
+            href="/admin/manage-admins"
+            className="text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 px-3 py-1.5 rounded font-semibold transition"
+            id="manage-admins-nav-btn"
+            style={{ display: 'none' }} /* Hidden by default, toggled client side if super_admin role */
+          >
+            Manage Admins
+          </Link>
           <Link
             href="/"
             className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded transition"

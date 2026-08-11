@@ -21,7 +21,7 @@ async function main() {
       email: 'admin@zahra.com',
       phone: '+251911000000',
       password_hash: adminPasswordHash,
-      role: Role.admin,
+      role: Role.super_admin,
       membership_status: 'active',
       membership_expiry_date: new Date('2030-01-01T00:00:00Z'),
     },

@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: genericErrorMessage }, { status: 401 });
     }
 
-    // Require the role to be specifically 'admin'
-    if (user.role !== 'admin') {
+    // Require the role to be either 'admin' or 'super_admin'
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
       return NextResponse.json({ error: genericErrorMessage }, { status: 401 });
     }
 

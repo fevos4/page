@@ -22,17 +22,37 @@ export async function middleware(req: NextRequest) {
   if (isAdminPage || isAdminApi) {
     const session = await verifySessionFromReq(req);
 
-    if (!session || session.role !== 'admin') {
-      if (isAdminApi) {
-        return NextResponse.json(
-          { error: 'Forbidden: Admin privilege required' },
-          { status: 403 }
-        );
-      }
+    // Is it a super admin only route?
+    const isSuperAdminOnlyPage = pathnameWithoutLocale.startsWith('/admin/manage-admins');
+    const isSuperAdminOnlyApi = pathname.startsWith('/api/admin/create-admin-account');
 
+    if (!session) {
+      if (isAdminApi) {
+        return NextResponse.json({ error: 'Forbidden: Admin privilege required' }, { status: 403 });
+      }
       const loginUrl = new URL('/admin-login', req.url);
       loginUrl.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(loginUrl);
+    }
+
+    if (isSuperAdminOnlyPage || isSuperAdminOnlyApi) {
+      if (session.role !== 'super_admin') {
+        if (isAdminApi) {
+          return NextResponse.json({ error: 'Forbidden: Super Admin privilege required' }, { status: 403 });
+        }
+        const loginUrl = new URL('/admin-login', req.url);
+        loginUrl.searchParams.set('callbackUrl', pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+    } else {
+      if (session.role !== 'admin' && session.role !== 'super_admin') {
+        if (isAdminApi) {
+          return NextResponse.json({ error: 'Forbidden: Admin privilege required' }, { status: 403 });
+        }
+        const loginUrl = new URL('/admin-login', req.url);
+        loginUrl.searchParams.set('callbackUrl', pathname);
+        return NextResponse.redirect(loginUrl);
+      }
     }
   }
 

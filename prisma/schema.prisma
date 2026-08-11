@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   user
   admin
+  super_admin
 }
 
 enum MembershipStatus {

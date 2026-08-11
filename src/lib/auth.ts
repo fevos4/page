@@ -11,7 +11,7 @@ export interface SessionPayload {
   userId: string;
   email: string;
   name: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'super_admin';
   expiresAt: number;
 }
 
