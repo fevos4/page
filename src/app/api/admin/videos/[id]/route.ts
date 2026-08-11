@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { deleteMinIOObject } from '@/lib/minio';
 import { normalizeEmbedUrl } from '@/lib/videoUtils';
 
@@ -10,13 +10,13 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getSession();
+  const session = await getAdminSession();
   if (!session || (session.role !== 'admin' && session.role !== 'super_admin')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const body = await req.json();
-  const { title, description, is_free, position, format, source_type, embed_url } = body;
+  const { title, description, is_free, downloadable, position, format, source_type, embed_url } = body;
 
   const video = await prisma.video.findUnique({ where: { id: params.id } });
   if (!video) {
@@ -28,6 +28,7 @@ export async function PUT(
 
   // Embed video rule check: If source_type is 'embed', is_free MUST be true
   const freeFlag = newSourceType === 'embed' ? true : is_free !== undefined ? Boolean(is_free) : video.is_free;
+  const downloadableFlag = newSourceType === 'self_hosted' ? (downloadable !== undefined ? Boolean(downloadable) : video.downloadable) : false;
 
   let normalizedEmbedUrl: string | null = video.embed_url;
 
@@ -58,6 +59,7 @@ export async function PUT(
       format: newFormat,
       embed_url: normalizedEmbedUrl,
       is_free: freeFlag,
+      downloadable: downloadableFlag,
     },
   });
 
@@ -68,7 +70,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getSession();
+  const session = await getAdminSession();
   if (!session || (session.role !== 'admin' && session.role !== 'super_admin')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }

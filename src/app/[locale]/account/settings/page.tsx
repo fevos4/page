@@ -7,6 +7,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useTranslations } from 'next-intl';
 import { User, Lock, AlertTriangle, LogOut, CheckCircle } from 'lucide-react';
 import LoadingLogo from '@/components/LoadingLogo';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface AccountUser {
   id: string;
@@ -258,17 +259,23 @@ export default function SettingsPage() {
             <span>Profile Information</span>
           </div>
 
-          {nameMsg && (
-            <div
-              className={`p-3 rounded text-xs border ${
-                nameMsg.type === 'success'
-                  ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-red-500/10 border-red-500/40 text-red-600 dark:text-red-400'
-              }`}
-            >
-              {nameMsg.text}
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {nameMsg && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className={`p-3 rounded text-xs border ${
+                  nameMsg.type === 'success'
+                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-red-500/10 border-red-500/40 text-red-600 dark:text-red-400'
+                }`}
+              >
+                {nameMsg.text}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <form onSubmit={handleUpdateName} className="space-y-4">
             <div>

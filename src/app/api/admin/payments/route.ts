@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key');
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET() {
-  const session = await getSession();
+  const session = await getAdminSession();
   if (!session || (session.role !== 'admin' && session.role !== 'super_admin')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
@@ -28,7 +28,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
+  const session = await getAdminSession();
   if (!session || (session.role !== 'admin' && session.role !== 'super_admin')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }

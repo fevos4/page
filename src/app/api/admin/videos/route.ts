@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { normalizeEmbedUrl } from '@/lib/videoUtils';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
+  const session = await getAdminSession();
   if (!session || (session.role !== 'admin' && session.role !== 'super_admin')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     embed_url,
     thumbnail_path,
     is_free,
+    downloadable,
     position,
   } = body;
 
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
 
   // Embed video rule check: If source_type is 'embed', is_free MUST be true
   const freeFlag = source_type === 'embed' ? true : Boolean(is_free);
+  const downloadableFlag = source_type === 'self_hosted' ? Boolean(downloadable) : false;
 
   let normalizedEmbedUrl: string | null = null;
   if (source_type === 'embed') {
@@ -75,6 +77,7 @@ export async function POST(req: NextRequest) {
       embed_url: normalizedEmbedUrl,
       thumbnail_path: thumbnail_path || null,
       is_free: freeFlag,
+      downloadable: downloadableFlag,
       position: newPosition,
       uploaded_by: session.userId,
     },

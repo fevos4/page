@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { generatePresignedPutUrl } from '@/lib/minio';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getAdminSession();
     if (!session || (session.role !== 'admin' && session.role !== 'super_admin')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

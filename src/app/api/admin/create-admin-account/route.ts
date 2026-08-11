@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import * as bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const session = await getSession();
+  const session = await getAdminSession();
   if (!session || session.role !== 'super_admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
@@ -23,6 +23,7 @@ export async function GET() {
       name: true,
       email: true,
       role: true,
+      membership_status: true,
       created_at: true,
     },
   });
@@ -32,7 +33,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getAdminSession();
     // Enforce super_admin permissions server-side
     if (!session || session.role !== 'super_admin') {
       return NextResponse.json({ error: 'Forbidden: Super Admin privilege required' }, { status: 403 });

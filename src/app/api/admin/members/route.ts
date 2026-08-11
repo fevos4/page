@@ -1,16 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const session = await getSession();
+  const session = await getAdminSession();
   if (!session || (session.role !== 'admin' && session.role !== 'super_admin')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  const whereClause = session.role === 'super_admin' ? {} : { role: 'user' as const };
+
   const members = await prisma.user.findMany({
+    where: whereClause,
     orderBy: { created_at: 'desc' },
     select: {
       id: true,

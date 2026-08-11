@@ -6,6 +6,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useTranslations } from 'next-intl';
 import { Clock, CheckCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Plan {
   id: string;
@@ -244,17 +245,23 @@ export default function MembershipPage() {
             </p>
           </div>
 
-          {message && (
-            <div
-              className={`p-4 rounded text-sm ${
-                message.type === 'success'
-                  ? 'bg-emerald-500/10 border border-emerald-500/50 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-red-500/10 border border-red-500/50 text-red-600 dark:text-red-400'
-              }`}
-            >
-              {message.text}
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {message && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className={`p-4 rounded text-sm ${
+                  message.type === 'success'
+                    ? 'bg-emerald-500/10 border border-emerald-500/50 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-red-500/10 border border-red-500/50 text-red-600 dark:text-red-400'
+                }`}
+              >
+                {message.text}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import * as bcrypt from 'bcryptjs';
-import { createSession } from '@/lib/auth';
+import { createAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +34,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: genericErrorMessage }, { status: 401 });
     }
 
-    await createSession({
+    // Check if admin account is deactivated (membership_status === 'expired')
+    if (user.membership_status === 'expired') {
+      return NextResponse.json(
+        { error: 'This admin account has been deactivated. Please contact a Super Administrator.' },
+        { status: 403 }
+      );
+    }
+
+    await createAdminSession({
       userId: user.id,
       email: user.email,
       name: user.name,

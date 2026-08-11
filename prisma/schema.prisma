@@ -84,6 +84,7 @@ model Video {
   embed_url      String?
   thumbnail_path String?
   is_free        Boolean    @default(false)
+  downloadable   Boolean    @default(false)
   position       Int
   uploaded_by    String     @db.Uuid
   created_at     DateTime   @default(now()) @db.Timestamptz

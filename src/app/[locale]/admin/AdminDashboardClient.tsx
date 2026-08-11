@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ThemeToggle from '@/components/ThemeToggle';
+import { MoreVertical } from 'lucide-react';
 
 interface Title {
   id: string;
@@ -22,6 +23,7 @@ interface Video {
   embed_url?: string;
   file_path?: string;
   is_free: boolean;
+  downloadable?: boolean;
   position: number;
 }
 
@@ -46,16 +48,17 @@ interface Member {
 
 const ITEMS_PER_PAGE = 8;
 
-export default function AdminDashboardClient() {
+export default function AdminDashboardClient({ onLogout }: { onLogout?: () => void }) {
   const [activeTab, setActiveTab] = useState<'titles' | 'payments' | 'members'>('payments');
   const [titles, setTitles] = useState<Title[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Pagination states
+  // Pagination & Filter states
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [membersPage, setMembersPage] = useState(1);
+  const [memberRoleFilter, setMemberRoleFilter] = useState<'all' | 'users' | 'admins'>('all');
 
   // New Title Form
   const [newTitleName, setNewTitleName] = useState('');
@@ -72,6 +75,7 @@ export default function AdminDashboardClient() {
   const [videoFormat, setVideoFormat] = useState<'landscape' | 'portrait'>('landscape');
   const [embedUrl, setEmbedUrl] = useState('');
   const [isFree, setIsFree] = useState(false);
+  const [downloadable, setDownloadable] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -94,6 +98,7 @@ export default function AdminDashboardClient() {
   const [editVideoFormat, setEditVideoFormat] = useState<'landscape' | 'portrait'>('landscape');
   const [editEmbedUrl, setEditEmbedUrl] = useState('');
   const [editIsFree, setEditIsFree] = useState(false);
+  const [editDownloadable, setEditDownloadable] = useState(false);
   const [editPosition, setEditPosition] = useState<number>(1);
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -187,6 +192,7 @@ export default function AdminDashboardClient() {
     setEditVideoFormat(video.format);
     setEditEmbedUrl(video.embed_url || '');
     setEditIsFree(video.is_free);
+    setEditDownloadable(Boolean(video.downloadable));
     setEditPosition(video.position || 1);
   };
 
@@ -206,6 +212,7 @@ export default function AdminDashboardClient() {
           format: editVideoFormat,
           embed_url: editEmbedUrl,
           is_free: editIsFree,
+          downloadable: editVideoSourceType === 'self_hosted' ? editDownloadable : false,
           position: editPosition,
         }),
       });
@@ -243,16 +250,21 @@ export default function AdminDashboardClient() {
     }
   };
 
+  const [currentAdminRole, setCurrentAdminRole] = useState<string | null>(null);
+
   useEffect(() => {
     fetchData();
 
-    // Query auth/me to dynamically show "Manage Admins" button if role is super_admin
-    fetch(`/api/auth/me?_=${Date.now()}`)
+    // Query admin/me to dynamically set current user role and show "Manage Admins" button if role is super_admin
+    fetch(`/api/admin/me?_=${Date.now()}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.user && data.user.role === 'super_admin') {
-          const btn = document.getElementById('manage-admins-nav-btn');
-          if (btn) btn.style.display = 'inline-block';
+        if (data.user) {
+          setCurrentAdminRole(data.user.role);
+          if (data.user.role === 'super_admin') {
+            const btn = document.getElementById('manage-admins-nav-btn');
+            if (btn) btn.style.display = 'inline-block';
+          }
         }
       })
       .catch((err) => console.error('Error fetching user role:', err));
@@ -412,6 +424,7 @@ export default function AdminDashboardClient() {
           file_path,
           thumbnail_path: thumbnail_path || undefined,
           is_free: isFree,
+          downloadable: sourceType === 'self_hosted' ? downloadable : false,
         }),
       });
 
@@ -423,6 +436,7 @@ export default function AdminDashboardClient() {
       setSelectedFile(null);
       setThumbnailFile(null);
       setIsFree(false);
+      setDownloadable(false);
       fetchData();
     } catch (err: any) {
       alert(err.message);
@@ -466,9 +480,78 @@ export default function AdminDashboardClient() {
     fetchData();
   };
 
+  const [openMemberMenuId, setOpenMemberMenuId] = useState<string | null>(null);
+
+  // Custom confirmation modal state
+  const [actionConfirmModal, setActionConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'toggle' | 'terminate';
+    member: { id: string; name: string; email: string; membership_status?: string } | null;
+    loading: boolean;
+  }>({
+    isOpen: false,
+    type: 'toggle',
+    member: null,
+    loading: false,
+  });
+
+  const triggerActionModal = (
+    type: 'toggle' | 'terminate',
+    member: { id: string; name: string; email: string; membership_status?: string }
+  ) => {
+    setOpenMemberMenuId(null);
+    setActionConfirmModal({
+      isOpen: true,
+      type,
+      member,
+      loading: false,
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!actionConfirmModal.member) return;
+    const { type, member } = actionConfirmModal;
+
+    setActionConfirmModal((prev) => ({ ...prev, loading: true }));
+
+    try {
+      if (type === 'terminate') {
+        const res = await fetch(`/api/admin/members/${member.id}`, {
+          method: 'DELETE',
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to terminate account');
+        }
+      } else {
+        const isDeactivating = member.membership_status !== 'expired';
+        const action = isDeactivating ? 'deactivate' : 'activate';
+        const res = await fetch(`/api/admin/members/${member.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to update account status');
+        }
+      }
+
+      setActionConfirmModal({ isOpen: false, type: 'toggle', member: null, loading: false });
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+      setActionConfirmModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    window.location.href = '/admin-login';
+    await fetch('/api/auth/admin-logout', { method: 'POST' });
+    if (onLogout) {
+      onLogout();
+    } else {
+      window.location.href = '/admin-login';
+    }
   };
 
   // Pagination calculations for payments
@@ -478,9 +561,15 @@ export default function AdminDashboardClient() {
     paymentsPage * ITEMS_PER_PAGE
   );
 
-  // Pagination calculations for members
-  const totalMembersPages = Math.ceil(members.length / ITEMS_PER_PAGE);
-  const currentMembers = members.slice(
+  // Filter and pagination calculations for members
+  const filteredMembers = members.filter((m) => {
+    if (memberRoleFilter === 'users') return m.role === 'user';
+    if (memberRoleFilter === 'admins') return m.role === 'admin' || m.role === 'super_admin';
+    return true;
+  });
+
+  const totalMembersPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
+  const currentMembers = filteredMembers.slice(
     (membersPage - 1) * ITEMS_PER_PAGE,
     membersPage * ITEMS_PER_PAGE
   );
@@ -490,7 +579,7 @@ export default function AdminDashboardClient() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="flex items-center space-x-3">
-          <img src="/imgs/logo.png" alt="Zahra's Page Logo" className="h-12 md:h-14 w-auto object-contain" />
+          <img src="/imgs/logo.png" alt="Zahra's Page Logo" className="h-12 md:h-14 w-auto object-contain brightness-0 dark:invert" />
           <div>
             <h1 className="text-2xl font-bold text-amber-500">Admin Dashboard</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -507,12 +596,6 @@ export default function AdminDashboardClient() {
             style={{ display: 'none' }} /* Hidden by default, toggled client side if super_admin role */
           >
             Manage Admins
-          </Link>
-          <Link
-            href="/"
-            className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded transition"
-          >
-            ← Back to Library
           </Link>
           <button
             onClick={handleLogout}
@@ -795,13 +878,18 @@ export default function AdminDashboardClient() {
                 </div>
 
                 {sourceType === 'embed' ? (
-                  <input
-                    type="url"
-                    placeholder="Embed URL (e.g. https://www.youtube.com/embed/...)"
-                    value={embedUrl}
-                    onChange={(e) => setEmbedUrl(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500"
-                  />
+                  <div className="space-y-1">
+                    <input
+                      type="url"
+                      placeholder="Embed URL (e.g. https://www.youtube.com/embed/...)"
+                      value={embedUrl}
+                      onChange={(e) => setEmbedUrl(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500"
+                    />
+                    <p className="text-[10px] text-slate-500 italic">
+                      Download control isn't available for embedded videos
+                    </p>
+                  </div>
                 ) : (
                   <div>
                     <label className="block text-[10px] text-slate-500 mb-1">Select Video File</label>
@@ -853,6 +941,18 @@ export default function AdminDashboardClient() {
                   />
                   <span>Is Free (Anyone can view)</span>
                 </label>
+
+                {sourceType === 'self_hosted' && (
+                  <label className="flex items-center space-x-2 text-xs text-slate-700 dark:text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={downloadable}
+                      onChange={(e) => setDownloadable(e.target.checked)}
+                      className="rounded bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-amber-500"
+                    />
+                    <span>Allow Download</span>
+                  </label>
+                )}
 
                 {/* Video upload progress bar */}
                 {uploading && uploadProgress > 0 && (
@@ -955,9 +1055,47 @@ export default function AdminDashboardClient() {
       {/* Tab 3: Members List */}
       {activeTab === 'members' && (
         <div className="space-y-4">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-200">
-            Registered Members List
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-200">
+              Registered Members List
+            </h2>
+
+            {/* Filter Toggle: All vs Users vs Admins (Only visible to Super Admins) */}
+            {currentAdminRole === 'super_admin' && (
+              <div className="inline-flex p-1 bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg text-xs font-semibold">
+                <button
+                  onClick={() => { setMemberRoleFilter('all'); setMembersPage(1); }}
+                  className={`px-3 py-1.5 rounded-md transition ${
+                    memberRoleFilter === 'all'
+                      ? 'bg-amber-400 text-slate-950 shadow-sm font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  }`}
+                >
+                  All Accounts ({members.length})
+                </button>
+                <button
+                  onClick={() => { setMemberRoleFilter('users'); setMembersPage(1); }}
+                  className={`px-3 py-1.5 rounded-md transition ${
+                    memberRoleFilter === 'users'
+                      ? 'bg-amber-400 text-slate-950 shadow-sm font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  }`}
+                >
+                  Users Only ({members.filter((m) => m.role === 'user').length})
+                </button>
+                <button
+                  onClick={() => { setMemberRoleFilter('admins'); setMembersPage(1); }}
+                  className={`px-3 py-1.5 rounded-md transition ${
+                    memberRoleFilter === 'admins'
+                      ? 'bg-amber-400 text-slate-950 shadow-sm font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  }`}
+                >
+                  Admins & Super Admins ({members.filter((m) => m.role === 'admin' || m.role === 'super_admin').length})
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden shadow-sm dark:shadow-xl">
             <table className="w-full text-left text-sm text-slate-700 dark:text-slate-300">
@@ -968,11 +1106,12 @@ export default function AdminDashboardClient() {
                   <th className="p-4">Role</th>
                   <th className="p-4">Membership Status</th>
                   <th className="p-4">Expiry Date</th>
+                  <th className="p-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {currentMembers.map((m) => (
-                  <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                  <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition relative">
                     <td className="p-4 font-medium text-slate-900 dark:text-slate-100">{m.name}</td>
                     <td className="p-4 text-slate-500 dark:text-slate-400">{m.email}</td>
                     <td className="p-4">
@@ -994,9 +1133,48 @@ export default function AdminDashboardClient() {
                       </span>
                     </td>
                     <td className="p-4 text-xs font-mono text-slate-500 dark:text-slate-400">
-                      {m.membership_expiry_date
+                      {m.role === 'admin' || m.role === 'super_admin'
+                        ? '—'
+                        : m.membership_expiry_date
                         ? new Date(m.membership_expiry_date).toLocaleDateString()
                         : '—'}
+                    </td>
+                    <td className="p-4 text-right relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMemberMenuId(openMemberMenuId === m.id ? null : m.id);
+                        }}
+                        className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition"
+                        title="Account options"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {openMemberMenuId === m.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setOpenMemberMenuId(null)}
+                          />
+                          <div className="absolute right-4 top-12 z-20 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl py-1 text-left">
+                            {currentAdminRole === 'super_admin' && (
+                              <button
+                                onClick={() => triggerActionModal('toggle', m)}
+                                className="w-full px-4 py-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 flex items-center space-x-2 transition border-b border-slate-100 dark:border-slate-800"
+                              >
+                                <span>{m.membership_status === 'expired' ? 'Activate Account' : 'Deactivate Account'}</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => triggerActionModal('terminate', m)}
+                              className="w-full px-4 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center space-x-2 transition"
+                            >
+                              <span>Terminate Account</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1100,7 +1278,7 @@ export default function AdminDashboardClient() {
                 </select>
               </div>
 
-              {editVideoSourceType === 'embed' && (
+              {editVideoSourceType === 'embed' ? (
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Embed URL
@@ -1111,8 +1289,11 @@ export default function AdminDashboardClient() {
                     onChange={(e) => setEditEmbedUrl(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
                   />
+                  <p className="text-[10px] text-slate-500 italic mt-1">
+                    Download control isn't available for embedded videos
+                  </p>
                 </div>
-              )}
+              ) : null}
 
               <div>
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -1139,6 +1320,21 @@ export default function AdminDashboardClient() {
                   Is Free (Anyone can view)
                 </label>
               </div>
+
+              {editVideoSourceType === 'self_hosted' && (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="editDownloadable"
+                    checked={editDownloadable}
+                    onChange={(e) => setEditDownloadable(e.target.checked)}
+                    className="rounded bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-amber-500"
+                  />
+                  <label htmlFor="editDownloadable" className="text-xs text-slate-700 dark:text-slate-300">
+                    Allow Download
+                  </label>
+                </div>
+              )}
 
               <div className="flex justify-end space-x-2 pt-2">
                 <button
@@ -1253,6 +1449,100 @@ export default function AdminDashboardClient() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Action Modal for Activate / Deactivate / Terminate */}
+      {actionConfirmModal.isOpen && actionConfirmModal.member && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4 text-slate-900 dark:text-slate-100 relative">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center space-x-2">
+                <span>
+                  {actionConfirmModal.type === 'terminate'
+                    ? 'Terminate Account'
+                    : actionConfirmModal.member.membership_status === 'expired'
+                    ? 'Activate Account'
+                    : 'Deactivate Account'}
+                </span>
+              </h3>
+              <button
+                onClick={() =>
+                  setActionConfirmModal({ isOpen: false, type: 'toggle', member: null, loading: false })
+                }
+                className="text-slate-400 hover:text-slate-100 text-sm font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 py-1">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                {actionConfirmModal.type === 'terminate' ? (
+                  <>
+                    Are you sure you want to permanently terminate the account for{' '}
+                    <strong className="text-amber-500">{actionConfirmModal.member.name}</strong> (
+                    <span className="font-mono text-slate-400">{actionConfirmModal.member.email}</span>)?
+                    <span className="block mt-2 text-red-500 font-semibold">
+                      This action cannot be undone and will permanently remove all associated records.
+                    </span>
+                  </>
+                ) : actionConfirmModal.member.membership_status === 'expired' ? (
+                  <>
+                    Are you sure you want to <strong className="text-emerald-500">REACTIVATE</strong> the account for{' '}
+                    <strong className="text-amber-500">{actionConfirmModal.member.name}</strong> (
+                    <span className="font-mono text-slate-400">{actionConfirmModal.member.email}</span>)?
+                    <span className="block mt-2 text-slate-400">
+                      The user/admin will regain active platform access immediately.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to <strong className="text-amber-500">DEACTIVATE</strong> the account for{' '}
+                    <strong className="text-amber-500">{actionConfirmModal.member.name}</strong> (
+                    <span className="font-mono text-slate-400">{actionConfirmModal.member.email}</span>)?
+                    <span className="block mt-2 text-amber-500/90 font-medium">
+                      They will be blocked from logging into the platform until reactivated.
+                    </span>
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() =>
+                  setActionConfirmModal({ isOpen: false, type: 'toggle', member: null, loading: false })
+                }
+                disabled={actionConfirmModal.loading}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                disabled={actionConfirmModal.loading}
+                className={`px-5 py-2 text-xs font-bold text-slate-950 rounded transition disabled:opacity-50 ${
+                  actionConfirmModal.type === 'terminate'
+                    ? 'bg-red-500 hover:bg-red-400 text-white'
+                    : actionConfirmModal.member.membership_status === 'expired'
+                    ? 'bg-emerald-400 hover:bg-emerald-300'
+                    : 'bg-amber-400 hover:bg-amber-300'
+                }`}
+              >
+                {actionConfirmModal.loading
+                  ? 'Processing...'
+                  : actionConfirmModal.type === 'terminate'
+                  ? 'Confirm Termination'
+                  : actionConfirmModal.member.membership_status === 'expired'
+                  ? 'Confirm Activation'
+                  : 'Confirm Deactivation'}
+              </button>
+            </div>
           </div>
         </div>
       )}
