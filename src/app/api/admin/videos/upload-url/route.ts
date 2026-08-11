@@ -12,16 +12,28 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { fileName, contentType } = body;
+    const rawFileName = body.fileName || body.filename;
+    const { contentType } = body;
 
-    if (!fileName || !contentType) {
+    if (!rawFileName || !contentType) {
       return NextResponse.json({ error: 'fileName and contentType are required' }, { status: 400 });
     }
 
-    const objectPath = `videos/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    // Clean filename
+    const cleanBaseName = rawFileName.replace(/\\/g, '/').split('/').pop() || '';
+    const cleanFileName = cleanBaseName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    
+    // Maintain directory prefixes (e.g. covers/ or videos/)
+    let objectPath = `uploads/${Date.now()}-${cleanFileName}`;
+    if (rawFileName.startsWith('covers/')) {
+      objectPath = `covers/${Date.now()}-${cleanFileName}`;
+    } else if (rawFileName.startsWith('videos/')) {
+      objectPath = `videos/${Date.now()}-${cleanFileName}`;
+    }
+
     const uploadUrl = await generatePresignedPutUrl(objectPath, contentType, 900);
 
-    return NextResponse.json({ uploadUrl, objectPath });
+    return NextResponse.json({ uploadUrl, objectKey: objectPath });
   } catch (error: any) {
     console.error('Error generating presigned upload URL:', error);
     return NextResponse.json(
