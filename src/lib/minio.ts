@@ -55,6 +55,11 @@ export const s3Client = new S3Client({
   },
   // forcePathStyle = true for local MinIO and B2, false for R2
   forcePathStyle: !isR2,
+  // Disable automatic checksum headers (CRC32 etc.) that AWS SDK v3 adds by default.
+  // Backblaze B2 (and some MinIO versions) do not accept these headers in presigned PUT
+  // requests, causing CORS preflight failures or signature mismatches.
+  requestChecksumCalculation: 'WHEN_REQUIRED' as any,
+  responseChecksumValidation: 'WHEN_REQUIRED' as any,
 });
 
 export const BUCKET_NAME = process.env.STORAGE_BUCKET || 'videos';

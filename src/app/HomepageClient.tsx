@@ -193,7 +193,7 @@ export default function HomepageClient({
         <div
           className="absolute inset-y-0 right-0 w-full md:w-3/5 bg-contain bg-right bg-no-repeat z-0 transform filter brightness-95 opacity-90 transition-all duration-500"
           style={{
-            backgroundImage: `url("${(latestTitleCover && (latestTitleCover.startsWith('/') || latestTitleCover.startsWith('http')) ? latestTitleCover : '/imgs/Hero 2.avif').replace(/ /g, '%20')}")`,
+            backgroundImage: `url("/imgs/Hero.webp")`,
           }}
         />
         {/* Softened Gradient Overlays to keep left text crisp */}
@@ -314,7 +314,16 @@ export default function HomepageClient({
                             !isPlayable ? 'filter grayscale contrast-125 opacity-40' : ''
                           }`}
                           style={{
-                            backgroundImage: `url("${(title.cover_image_path && (title.cover_image_path.startsWith('/') || title.cover_image_path.startsWith('http')) ? title.cover_image_path : '/imgs/Hero 2.avif').replace(/ /g, '%20')}")`,
+                            backgroundImage: (() => {
+                              // Per-video thumbnail takes priority; fall back to title cover, then placeholder
+                              const src =
+                                (video.thumbnail_path && video.thumbnail_path.startsWith('http'))
+                                  ? video.thumbnail_path
+                                  : (title.cover_image_path && title.cover_image_path.startsWith('http'))
+                                    ? title.cover_image_path
+                                    : '/imgs/Hero.webp';
+                              return `url("${src.replace(/ /g, '%20')}")`;
+                            })(),
                           }}
                         />
 
@@ -429,8 +438,10 @@ export default function HomepageClient({
 
               {playSource && playSource.source_type === 'self_hosted' && (
                 <video
+                  key={playSource.url}
                   controls
                   autoPlay
+                  preload="metadata"
                   src={playSource.url}
                   className="w-full h-full object-contain"
                 />

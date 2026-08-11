@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { generatePresignedGetUrl } from '@/lib/minio';
 import HomepageClient from '@/app/HomepageClient';
 import { setRequestLocale } from 'next-intl/server';
 
@@ -22,25 +23,35 @@ export default async function HomePage({
     },
   });
 
-  const titles = rawTitles.map((t) => ({
-    id: t.id,
-    name: t.name,
-    description: t.description,
-    cover_image_path: t.cover_image_path,
-    position: t.position,
-    created_at: t.created_at.toISOString(),
-    videos: t.videos.map((v) => ({
-      id: v.id,
-      title: v.title,
-      description: v.description,
-      source_type: v.source_type as 'self_hosted' | 'embed',
-      format: v.format as 'landscape' | 'portrait',
-      embed_url: v.embed_url,
-      thumbnail_path: v.thumbnail_path,
-      is_free: v.is_free,
-      position: v.position,
-    })),
-  }));
+  // Resolve cover image paths AND video thumbnail paths → presigned URLs (1 hour expiry)
+  const titles = await Promise.all(
+    rawTitles.map(async (t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      cover_image_path: t.cover_image_path
+        ? await generatePresignedGetUrl(t.cover_image_path, 3600).catch(() => null)
+        : null,
+      position: t.position,
+      created_at: t.created_at.toISOString(),
+      videos: await Promise.all(
+        t.videos.map(async (v) => ({
+          id: v.id,
+          title: v.title,
+          description: v.description,
+          source_type: v.source_type as 'self_hosted' | 'embed',
+          format: v.format as 'landscape' | 'portrait',
+          embed_url: v.embed_url,
+          // Resolve thumbnail to a presigned URL if set; null otherwise
+          thumbnail_path: v.thumbnail_path
+            ? await generatePresignedGetUrl(v.thumbnail_path, 3600).catch(() => null)
+            : null,
+          is_free: v.is_free,
+          position: v.position,
+        }))
+      ),
+    }))
+  );
 
   // Fetch most recently created Title name and cover image for the hero section
   const latestTitleObj = await prisma.title.findFirst({
@@ -93,12 +104,17 @@ export default async function HomePage({
     }
   }
 
+  // Generate presigned URL for hero cover image (1 hour expiry)
+  const heroCover = latestTitleObj?.cover_image_path
+    ? await generatePresignedGetUrl(latestTitleObj.cover_image_path, 3600).catch(() => null)
+    : null;
+
   return (
     <HomepageClient
       titles={titles}
       user={user}
       latestTitleName={latestTitleObj?.name || null}
-      latestTitleCover={latestTitleObj?.cover_image_path || null}
+      latestTitleCover={heroCover}
       latestFreeVideo={latestFreeVideo}
     />
   );
