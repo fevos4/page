@@ -14,17 +14,46 @@ const port = process.env.MINIO_PORT || '9000';
 const useSSL = process.env.MINIO_USE_SSL === 'true';
 const protocol = useSSL ? 'https' : 'http';
 
-const isR2 = process.env.STORAGE_PROVIDER === 'r2';
-const r2Endpoint = `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-const minioEndpoint = `${protocol}://${endpoint}:${port}`;
+const provider = process.env.STORAGE_PROVIDER || 'minio';
+const isR2 = provider === 'r2';
+const isB2 = provider === 'b2';
+
+// 1. Build endpoint dynamically
+let endpointUrl = `${protocol}://${endpoint}:${port}`;
+if (isR2) {
+  endpointUrl = `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+} else if (isB2) {
+  endpointUrl = process.env.B2_ENDPOINT || '';
+}
+
+// 2. Resolve region parameter (e.g. R2 uses auto, B2 parses region from endpoint like s3.us-west-004.backblazeb2.com)
+let s3Region = 'us-east-1';
+if (isR2) {
+  s3Region = 'auto';
+} else if (isB2 && endpointUrl) {
+  const match = endpointUrl.match(/s3\.([a-z0-9-]+)\.backblazeb2\.com/i);
+  if (match) s3Region = match[1];
+}
+
+// 3. Match credential payload
+let accessKey = process.env.MINIO_ACCESS_KEY || 'minioadmin';
+let secretKey = process.env.MINIO_SECRET_KEY || 'minioadmin';
+if (isR2) {
+  accessKey = process.env.R2_ACCESS_KEY_ID || '';
+  secretKey = process.env.R2_SECRET_ACCESS_KEY || '';
+} else if (isB2) {
+  accessKey = process.env.B2_KEY_ID || '';
+  secretKey = process.env.B2_APPLICATION_KEY || '';
+}
 
 export const s3Client = new S3Client({
-  region: isR2 ? 'auto' : 'us-east-1',
-  endpoint: isR2 ? r2Endpoint : minioEndpoint,
+  region: s3Region,
+  endpoint: endpointUrl,
   credentials: {
-    accessKeyId: isR2 ? (process.env.R2_ACCESS_KEY_ID || '') : (process.env.MINIO_ACCESS_KEY || 'minioadmin'),
-    secretAccessKey: isR2 ? (process.env.R2_SECRET_ACCESS_KEY || '') : (process.env.MINIO_SECRET_KEY || 'minioadmin'),
+    accessKeyId: accessKey,
+    secretAccessKey: secretKey,
   },
+  // forcePathStyle = true for local MinIO and B2, false for R2
   forcePathStyle: !isR2,
 });
 
@@ -33,7 +62,7 @@ export const BUCKET_NAME = process.env.STORAGE_BUCKET || 'videos';
 let bucketVerified = false;
 
 export async function ensureBucketExists(): Promise<void> {
-  if (isR2) return;
+  if (isR2 || isB2) return;
   if (bucketVerified) return;
 
   try {
