@@ -33,7 +33,12 @@ export async function POST(req: NextRequest) {
 
     const uploadUrl = await generatePresignedPutUrl(objectPath, contentType, 900);
 
-    return NextResponse.json({ uploadUrl, objectKey: objectPath });
+    return NextResponse.json({ 
+      uploadUrl, 
+      url: uploadUrl, 
+      objectKey: objectPath, 
+      objectPath 
+    });
   } catch (error: any) {
     console.error('Error generating presigned upload URL:', error);
     return NextResponse.json(

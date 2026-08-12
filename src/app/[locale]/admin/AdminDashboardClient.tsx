@@ -124,6 +124,68 @@ export default function AdminDashboardClient({ onLogout }: { onLogout?: () => vo
     }
   };
 
+  // Helper function for uploading files to MinIO/B2 storage with progress tracking and defensive validation
+  const uploadFileToStorage = async (
+    file: File,
+    folderPrefix: 'covers' | 'videos',
+    onProgress?: (percent: number) => void
+  ): Promise<{ uploadUrl: string; objectKey: string }> => {
+    const signRes = await fetch('/api/admin/videos/upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: `${folderPrefix}/${Date.now()}-${file.name}`,
+        contentType: file.type || 'application/octet-stream',
+      }),
+    });
+
+    const signData = await signRes.json().catch(() => ({}));
+    if (!signRes.ok) {
+      throw new Error(signData.error || 'Failed to get upload URL');
+    }
+
+    // Support both uploadUrl and url, objectKey and objectPath
+    const targetUrl = signData.uploadUrl || signData.url;
+    const objectKey = signData.objectKey || signData.objectPath;
+
+    // Defensive error handling: validate URL before using
+    if (!targetUrl || typeof targetUrl !== 'string') {
+      throw new Error('Upload URL was not returned correctly by the server -- contact support');
+    }
+
+    try {
+      new URL(targetUrl);
+    } catch {
+      throw new Error('Upload URL was not returned correctly by the server -- contact support');
+    }
+
+    if (!objectKey || typeof objectKey !== 'string') {
+      throw new Error('Upload object key was not returned correctly by the server -- contact support');
+    }
+
+    // Use XHR for upload to track progress
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', targetUrl);
+      if (file.type) {
+        xhr.setRequestHeader('Content-Type', file.type);
+      }
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Upload failed: HTTP ${xhr.status}`));
+      };
+      xhr.onerror = () => reject(new Error('Network error during file upload'));
+      xhr.send(file);
+    });
+
+    return { uploadUrl: targetUrl, objectKey };
+  };
+
   const handleSaveTitleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTitle) return;
@@ -133,33 +195,12 @@ export default function AdminDashboardClient({ onLogout }: { onLogout?: () => vo
       let newCoverPath: string | undefined = undefined;
 
       if (editTitleCoverFile) {
-        const signRes = await fetch('/api/admin/videos/upload-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: `covers/${Date.now()}-${editTitleCoverFile.name}`,
-            contentType: editTitleCoverFile.type,
-          }),
-        });
-        const signData = await signRes.json();
-        if (!signRes.ok) throw new Error(signData.error || 'Failed to get upload URL');
-
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('PUT', signData.uploadUrl);
-          xhr.setRequestHeader('Content-Type', editTitleCoverFile.type);
-          xhr.upload.onprogress = (ev) => {
-            if (ev.lengthComputable)
-              setEditTitleCoverProgress(Math.round((ev.loaded / ev.total) * 100));
-          };
-          xhr.onload = () =>
-            xhr.status >= 200 && xhr.status < 300
-              ? resolve()
-              : reject(new Error(`Upload failed: HTTP ${xhr.status}`));
-          xhr.onerror = () => reject(new Error('Network error during cover upload'));
-          xhr.send(editTitleCoverFile);
-        });
-        newCoverPath = signData.objectKey;
+        const uploadRes = await uploadFileToStorage(
+          editTitleCoverFile,
+          'covers',
+          setEditTitleCoverProgress
+        );
+        newCoverPath = uploadRes.objectKey;
       }
 
       const res = await fetch(`/api/admin/titles/${editingTitle.id}`, {
@@ -280,37 +321,12 @@ export default function AdminDashboardClient({ onLogout }: { onLogout?: () => vo
       let cover_image_path = '';
 
       if (coverFile) {
-        const signRes = await fetch('/api/admin/videos/upload-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: `covers/${Date.now()}-${coverFile.name}`,
-            contentType: coverFile.type,
-          }),
-        });
-
-        const signData = await signRes.json();
-        if (!signRes.ok) throw new Error(signData.error || 'Failed to get upload URL');
-
-        // Use XHR instead of fetch so we can track upload progress
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('PUT', signData.uploadUrl);
-          xhr.setRequestHeader('Content-Type', coverFile.type);
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-              setUploadCoverProgress(Math.round((e.loaded / e.total) * 100));
-            }
-          };
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) resolve();
-            else reject(new Error(`Upload failed: HTTP ${xhr.status}`));
-          };
-          xhr.onerror = () => reject(new Error('Network error during cover upload'));
-          xhr.send(coverFile);
-        });
-
-        cover_image_path = signData.objectKey;
+        const uploadRes = await uploadFileToStorage(
+          coverFile,
+          'covers',
+          setUploadCoverProgress
+        );
+        cover_image_path = uploadRes.objectKey;
       }
 
       const res = await fetch('/api/admin/titles', {
@@ -346,69 +362,24 @@ export default function AdminDashboardClient({ onLogout }: { onLogout?: () => vo
       let file_path = '';
 
       if (sourceType === 'self_hosted' && selectedFile) {
-        const signRes = await fetch('/api/admin/videos/upload-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: `videos/${Date.now()}-${selectedFile.name}`,
-            contentType: selectedFile.type,
-          }),
-        });
-
-        const signData = await signRes.json();
-        if (!signRes.ok) throw new Error(signData.error || 'Failed to get upload URL');
-
-        // Use XHR instead of fetch so we can track upload progress
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('PUT', signData.uploadUrl);
-          xhr.setRequestHeader('Content-Type', selectedFile.type);
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-              setUploadProgress(Math.round((e.loaded / e.total) * 100));
-            }
-          };
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) resolve();
-            else reject(new Error(`Upload failed: HTTP ${xhr.status}`));
-          };
-          xhr.onerror = () => reject(new Error('Network error during video upload'));
-          xhr.send(selectedFile);
-        });
-
-        file_path = signData.objectKey;
+        const uploadRes = await uploadFileToStorage(
+          selectedFile,
+          'videos',
+          setUploadProgress
+        );
+        file_path = uploadRes.objectKey;
       }
 
       // Upload thumbnail if provided
       let thumbnail_path = '';
       if (thumbnailFile) {
         setUploadThumbnailProgress(0);
-        const thumbSignRes = await fetch('/api/admin/videos/upload-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: `covers/${Date.now()}-${thumbnailFile.name}`,
-            contentType: thumbnailFile.type,
-          }),
-        });
-        const thumbSignData = await thumbSignRes.json();
-        if (!thumbSignRes.ok) throw new Error(thumbSignData.error || 'Failed to get thumbnail upload URL');
-
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('PUT', thumbSignData.uploadUrl);
-          xhr.setRequestHeader('Content-Type', thumbnailFile.type);
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) setUploadThumbnailProgress(Math.round((e.loaded / e.total) * 100));
-          };
-          xhr.onload = () =>
-            xhr.status >= 200 && xhr.status < 300
-              ? resolve()
-              : reject(new Error(`Thumbnail upload failed: HTTP ${xhr.status}`));
-          xhr.onerror = () => reject(new Error('Network error during thumbnail upload'));
-          xhr.send(thumbnailFile);
-        });
-        thumbnail_path = thumbSignData.objectKey;
+        const thumbUploadRes = await uploadFileToStorage(
+          thumbnailFile,
+          'covers',
+          setUploadThumbnailProgress
+        );
+        thumbnail_path = thumbUploadRes.objectKey;
       }
 
       const res = await fetch('/api/admin/videos', {
