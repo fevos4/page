@@ -23,7 +23,8 @@ let endpointUrl = `${protocol}://${endpoint}:${port}`;
 if (isR2) {
   endpointUrl = `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 } else if (isB2) {
-  endpointUrl = process.env.B2_ENDPOINT || '';
+  const b2Ep = process.env.B2_ENDPOINT || '';
+  endpointUrl = b2Ep.startsWith('http') ? b2Ep : `https://${b2Ep}`;
 }
 
 // 2. Resolve region parameter (e.g. R2 uses auto, B2 parses region from endpoint like s3.us-west-004.backblazeb2.com)
@@ -55,9 +56,6 @@ export const s3Client = new S3Client({
   },
   // forcePathStyle = true for local MinIO and B2, false for R2
   forcePathStyle: !isR2,
-  // Disable automatic checksum headers (CRC32 etc.) that AWS SDK v3 adds by default.
-  // Backblaze B2 (and some MinIO versions) do not accept these headers in presigned PUT
-  // requests, causing CORS preflight failures or signature mismatches.
   requestChecksumCalculation: 'WHEN_REQUIRED' as any,
   responseChecksumValidation: 'WHEN_REQUIRED' as any,
 });
