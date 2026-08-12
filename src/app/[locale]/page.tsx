@@ -14,14 +14,57 @@ export default async function HomePage({
 }) {
   setRequestLocale(locale);
 
-  const rawTitles = await prisma.title.findMany({
-    orderBy: { position: 'asc' },
-    include: {
-      videos: {
-        orderBy: { position: 'asc' },
+  let rawTitles: any[] = [];
+  let latestTitleObj: { name: string; cover_image_path: string | null; id: string } | null = null;
+  let latestFreeVideoObj: any = null;
+  let user: any = null;
+
+  try {
+    rawTitles = await prisma.title.findMany({
+      orderBy: { position: 'asc' },
+      include: {
+        videos: {
+          orderBy: { position: 'asc' },
+        },
       },
-    },
-  });
+    });
+
+    latestTitleObj = await prisma.title.findFirst({
+      orderBy: { created_at: 'desc' },
+      select: { name: true, cover_image_path: true, id: true },
+    });
+
+    latestFreeVideoObj = await prisma.video.findFirst({
+      where: { is_free: true },
+      orderBy: { created_at: 'desc' },
+    });
+
+    const session = await getSession().catch(() => null);
+    if (session && session.userId) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          membership_status: true,
+        },
+      });
+
+      if (dbUser) {
+        user = {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          role: dbUser.role,
+          membershipStatus: dbUser.membership_status,
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Error loading HomePage Server Component data:', err);
+  }
 
   // Resolve cover image paths AND video thumbnail paths → presigned URLs (1 hour expiry)
   const titles = await Promise.all(
@@ -33,16 +76,15 @@ export default async function HomePage({
         ? await generatePresignedGetUrl(t.cover_image_path, 3600).catch(() => null)
         : null,
       position: t.position,
-      created_at: t.created_at.toISOString(),
+      created_at: t.created_at ? t.created_at.toISOString() : new Date().toISOString(),
       videos: await Promise.all(
-        t.videos.map(async (v) => ({
+        t.videos.map(async (v: any) => ({
           id: v.id,
           title: v.title,
           description: v.description,
           source_type: v.source_type as 'self_hosted' | 'embed',
           format: v.format as 'landscape' | 'portrait',
           embed_url: v.embed_url,
-          // Resolve thumbnail to a presigned URL if set; null otherwise
           thumbnail_path: v.thumbnail_path
             ? await generatePresignedGetUrl(v.thumbnail_path, 3600).catch(() => null)
             : null,
@@ -52,18 +94,6 @@ export default async function HomePage({
       ),
     }))
   );
-
-  // Fetch most recently created Title name and cover image for the hero section
-  const latestTitleObj = await prisma.title.findFirst({
-    orderBy: { created_at: 'desc' },
-    select: { name: true, cover_image_path: true, id: true },
-  });
-
-  // Fetch most recently added FREE video for the "Watch Free Preview" CTA
-  const latestFreeVideoObj = await prisma.video.findFirst({
-    where: { is_free: true },
-    orderBy: { created_at: 'desc' },
-  });
 
   const latestFreeVideo = latestFreeVideoObj
     ? {
@@ -77,32 +107,6 @@ export default async function HomePage({
         position: latestFreeVideoObj.position,
       }
     : null;
-
-  const session = await getSession();
-
-  let user = null;
-  if (session && session.userId) {
-    const dbUser = await prisma.user.findUnique({
-      where: { id: session.userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        membership_status: true,
-      },
-    });
-
-    if (dbUser) {
-      user = {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        role: dbUser.role,
-        membershipStatus: dbUser.membership_status,
-      };
-    }
-  }
 
   // Generate presigned URL for hero cover image (1 hour expiry)
   const heroCover = latestTitleObj?.cover_image_path

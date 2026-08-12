@@ -116,12 +116,18 @@ export async function ensureBucketExists(): Promise<void> {
   }
 }
 
-export async function generatePresignedGetUrl(objectPath: string, expiresInSeconds = 900): Promise<string> {
-  const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: objectPath,
-  });
-  return getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
+export async function generatePresignedGetUrl(objectPath: string, expiresInSeconds = 900): Promise<string | null> {
+  try {
+    if (!objectPath) return null;
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: objectPath,
+    });
+    return await getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
+  } catch (error) {
+    console.error(`Failed to generate presigned GET URL for ${objectPath}:`, error);
+    return null;
+  }
 }
 
 export async function generatePresignedPutUrl(objectPath: string, contentType: string, expiresInSeconds = 900): Promise<string> {
